@@ -1,29 +1,36 @@
 # CompanyStats
 
-🔍 Fuzzy search for companies contributing to CNCF projects, with country flags and a Europe Top leaderboard.
+Quick hack to search CNCF DevStats for companies and see who's actually contributing. Has a Europe leaderboard because that's what I needed.
 
-Built on data from [CNCF DevStats](https://devstats.cncf.io).
+Live: **[mfahlandt.github.io/companystats](https://mfahlandt.github.io/companystats)**
 
-## Features
+## What it does
 
-- **Company Search** — fuzzy search across 1,800+ companies contributing to CNCF projects
-- **Country Flags** — every company gets a flag based on HQ country
-- **Europe Top** — flat leaderboard of all European companies by contributions, with global rank
-- **By Country** — grouped view showing companies per European country with totals
-- **EU-only toggle** — filter to EU-27 member states
-- **Project selector** — switch between All CNCF, Kubernetes, Prometheus, etc.
-- **Time range** — Last year / Last decade / Last month
+- Fuzzy search ~1,800 companies across CNCF projects
+- Shows country flags (best-guess, see below)
+- Europe leaderboard — flat list sorted by contributions, or grouped by country
+- EU-only toggle, project selector, time range picker
 
-## Live
+## How country mapping works
 
-👉 **[mfahlandt.github.io/companystats](https://mfahlandt.github.io/companystats)**
+Company → country is a **static mapping** (~1,480 entries). It's based on:
+- Known HQ locations for major companies
+- Suffix heuristics (GmbH → DE, AB → SE, Ltd → UK, etc.)
+
+This means:
+- Companies get **one country**, even if they have offices worldwide. It's the HQ / registration country.
+- A company might change country if they re-incorporate (e.g. after a merger or relocation). The mapping gets updated manually — no automation for this.
+- If a company isn't in the mapping, no flag shows up. PRs welcome.
+- It's **not** based on where contributions come from — just where the company is legally based.
+
+## Disclaimer
+
+This is an unofficial side project. Not affiliated with CNCF. Data comes from [devstats.cncf.io](https://devstats.cncf.io) — if the numbers look wrong, that's where they live. Country assignments are approximate and may be wrong. Don't use this for anything that matters.
 
 ## Tech
 
-Pure HTML + JS + CSS, no build step, no backend. Calls the DevStats API directly (CORS-open).
-
-Company → country mapping is a static JS file with ~1,480 known mappings.
+No build step, no backend, no framework. Just HTML + JS + CSS calling the DevStats API directly (it has open CORS). 
 
 ## License
 
-MIT
+Apache 2.0 — see [LICENSE](LICENSE).

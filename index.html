@@ -265,6 +265,14 @@ tr.highlight td { background: #1a2e1a; }
 .footer a:hover {
   text-decoration: underline;
 }
+.disclaimer {
+  display: inline-block;
+  max-width: 600px;
+  font-size: 0.7rem;
+  color: var(--text2);
+  line-height: 1.4;
+  opacity: 0.8;
+}
 .tabs {
   display: flex;
   gap: 0;
@@ -898,7 +906,9 @@ loadProjects();
     <footer class="footer">
       Made with 🐦‍⬛ by <a href="https://lwcn.dev" target="_blank">Mario Fahlandt</a> · Data from <a href="https://devstats.cncf.io" target="_blank">CNCF DevStats</a>
       <br>
-      <a href="https://github.com/mfahlandt/companystats" target="_blank">Source on GitHub</a>
+      <a href="https://github.com/mfahlandt/companystats" target="_blank">Source on GitHub</a> · Apache 2.0
+      <br><br>
+      <span class="disclaimer">Unofficial side project. Not affiliated with CNCF. Country assignments are approximations based on company HQ — not where contributors work. Numbers come from DevStats; if they look wrong, that's the source. Don't use this for anything that matters.</span>
     </footer>
 </body>
 </html>
