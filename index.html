@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevStats CNCF Company Search</title>
+<script src="company-countries.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --accent: #58a6ff;
+  --accent2: #1f6feb;
+  --green: #3fb950;
+  --orange: #d29922;
+  --red: #f85149;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.subtitle {
+  color: var(--text2);
+  font-size: 0.875rem;
+  margin-bottom: 24px;
+}
+.search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.search-row input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 1rem;
+  outline: none;
+}
+.search-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(88,166,255,0.3);
+}
+select {
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+button {
+  padding: 10px 20px;
+  background: var(--accent2);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+button:hover { background: var(--accent); }
+button:disabled { opacity: 0.5; cursor: wait; }
+.stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+.stat strong { color: var(--text); font-size: 1rem; }
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.result-card:hover {
+  border-color: var(--accent);
+  background: #1c2333;
+}
+.result-card.exact { border-left: 3px solid var(--green); }
+.result-card.prefix { border-left: 3px solid var(--accent); }
+.result-card.contains { border-left: 3px solid var(--orange); }
+.result-card.word_match { border-left: 3px solid #a371f7; }
+.result-card.fuzzy { border-left: 3px solid var(--text2); }
+.company-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+.flag {
+  font-size: 1.1rem;
+  margin-right: 6px;
+}
+.company-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.match-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.match-badge.exact { background: #1a4326; color: var(--green); }
+.match-badge.prefix { background: #0d2847; color: var(--accent); }
+.match-badge.contains { background: #3d2e00; color: var(--orange); }
+.match-badge.word_match { background: #2a1f47; color: #a371f7; }
+.match-badge.fuzzy { background: #252830; color: var(--text2); }
+.contrib-count {
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+.detail-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+  display: none;
+}
+.detail-panel.open { display: block; }
+.detail-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.detail-meta {
+  color: var(--text2);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+.table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+th {
+  position: sticky;
+  top: 0;
+  background: #1c2333;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+tr:hover td { background: #1c2333; }
+tr.highlight td { background: #1a2e1a; }
+.rank-col { color: var(--text2); width: 50px; }
+.contrib-col { text-align: right; font-variant-numeric: tabular-nums; }
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text2);
+}
+.loading .spinner {
+  display: inline-block;
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error { color: var(--red); padding: 16px; background: #2d1215; border-radius: 6px; }
+.projects-toggle {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+.projects-list {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  columns: 3;
+  column-gap: 8px;
+  font-size: 0.75rem;
+}
+.projects-list.open { display: block; }
+.projects-list span {
+  display: block;
+  padding: 2px 0;
+  color: var(--text2);
+  cursor: pointer;
+}
+.projects-list span:hover { color: var(--accent); }
+.devstats-link {
+  color: var(--text2);
+  text-decoration: none;
+  font-size: 0.75rem;
+  margin-left: 4px;
+  transition: color 0.15s;
+}
+.devstats-link:hover { color: var(--accent); }
+.footer {
+  text-align: center;
+  padding: 32px 16px 24px;
+  color: var(--text2);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+}
+.footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.footer a:hover {
+  text-decoration: underline;
+}
+.tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text2);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  border-radius: 0;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.europe-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text2);
+  cursor: pointer;
+}
+.toggle-label input { cursor: pointer; }
+.eu-flag { font-size: 1rem; margin-right: 4px; }
+.country-group {
+  margin-bottom: 16px;
+}
+.country-group h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding: 4px 0;
+}
+.country-group .country-total {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.europe-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.europe-row:hover { background: #1c2333; }
+.sub-tabs {
+  display: flex;
+  gap: 0;
+  margin-left: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sub-tab {
+  padding: 6px 14px;
+  background: var(--surface);
+  border: none;
+  color: var(--text2);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 0 !important;
+  font-weight: 500;
+}
+.sub-tab:hover { background: #1c2333; color: var(--text); }
+.sub-tab.active { background: var(--accent2); color: #fff; }
+.country-group {
+  margin-bottom: 16px;
+}
+.country-group h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  padding: 4px 0;
+}
+.country-group .country-total {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.country-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.country-row:hover { background: #1c2333; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 DevStats CNCF Company Search</h1>
+  <p class="subtitle">Fuzzy search across companies contributing to CNCF projects · Data from <a href="https://devstats.cncf.io" target="_blank" style="color:var(--accent)">devstats.cncf.io</a></p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('search')" id="tab-search">🔍 Search</button>
+    <button class="tab" onclick="switchTab('europe')" id="tab-europe">🇪🇺 Europe Top</button>
+  </div>
+
+  <div id="panel-search">
+    <div class="search-row">
+      <input type="text" id="search" placeholder="Company name (e.g. Kubermatic, Red Hat, Google)..." autofocus>
+      <select id="project">
+        <option value="All CNCF">All CNCF</option>
+      </select>
+      <select id="range">
+        <option value="Last year">Last year</option>
+        <option value="Last quarter">Last quarter</option>
+        <option value="Last decade">Last decade</option>
+      </select>
+      <select id="metric">
+        <option value="Contributions">Contributions</option>
+        <option value="Contributors">Contributors</option>
+        <option value="Committers">Committers</option>
+        <option value="Authors">Authors</option>
+        <option value="PRs">PRs</option>
+        <option value="Issues">Issues</option>
+        <option value="Commits">Commits</option>
+      </select>
+      <button id="btn" onclick="doSearch()">Search</button>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div id="projects-toggle" class="projects-toggle" onclick="toggleProjects()">▸ Available projects</div>
+    <div id="projects-list" class="projects-list"></div>
+
+    <div id="results"></div>
+
+    <div id="detail" class="detail-panel"></div>
+  </div>
+
+  <div id="panel-europe" style="display:none">
+    <div class="europe-controls">
+      <select id="eu-project">
+        <option value="All CNCF">All CNCF</option>
+      </select>
+      <select id="eu-range">
+        <option value="Last year">Last year</option>
+        <option value="Last quarter">Last quarter</option>
+        <option value="Last decade">Last decade</option>
+      </select>
+      <select id="eu-metric">
+        <option value="Contributions">Contributions</option>
+        <option value="Contributors">Contributors</option>
+      </select>
+      <button onclick="loadEurope()">Load</button>
+      <label class="toggle-label"><input type="checkbox" id="eu-only" onchange="loadEurope()"> EU only</label>
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchEuropeView('flat')" id="eu-view-flat">📊 Top List</button>
+        <button class="sub-tab" onclick="switchEuropeView('grouped')" id="eu-view-grouped">🌍 By Country</button>
+      </div>
+    </div>
+    <div id="europe-stats" class="stats"></div>
+    <div id="europe-loading" class="loading" style="display:none"><div class="spinner"></div><br>Loading Europe data...</div>
+    <div id="europe-table"></div>
+    <div id="europe-grouped" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const API = 'https://devstats.cncf.io/api/v1';
+let allCompanies = [];
+let currentData = null;
+
+// Country code to flag emoji
+function cc2flag(cc) {
+  if (!cc || cc.length !== 2) return '';
+  const base = 0x1F1E6 - 65;
+  return String.fromCodePoint(base + cc.charCodeAt(0)) + String.fromCodePoint(base + cc.charCodeAt(1));
+}
+
+// European country codes
+const EU_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
+const EUROPE_COUNTRIES = new Set([...EU_COUNTRIES, 'GB','NO','IS','CH','LI','MC','VA','SM','AD','RS','BA','ME','MK','AL','XK','MD','UA','BY','TR']);
+
+// Country code to country name
+const CC_NAMES = {
+  US:'United States', DE:'Germany', CN:'China', GB:'United Kingdom', FR:'France',
+  NL:'Netherlands', CH:'Switzerland', IN:'India', JP:'Japan', CA:'Canada',
+  SE:'Sweden', KR:'South Korea', AU:'Australia', BR:'Brazil', IL:'Israel',
+  RU:'Russia', IT:'Italy', ES:'Spain', AT:'Austria', PL:'Poland',
+  IE:'Ireland', CZ:'Czech Republic', SG:'Singapore', DK:'Denmark', NO:'Norway',
+  FI:'Finland', BE:'Belgium', PT:'Portugal', UA:'Ukraine', TW:'Taiwan',
+  NZ:'New Zealand', HU:'Hungary', TR:'Turkey', ZA:'South Africa', AR:'Argentina',
+  MX:'Mexico', ID:'Indonesia', TH:'Thailand', VN:'Vietnam', MY:'Malaysia',
+  PH:'Philippines', CO:'Colombia', CL:'Chile', HK:'Hong Kong', AE:'UAE',
+  SA:'Saudi Arabia', EG:'Egypt', NG:'Nigeria', KE:'Kenya', PK:'Pakistan',
+  BD:'Bangladesh', RO:'Romania', GR:'Greece', SK:'Slovakia', SI:'Slovenia',
+  HR:'Croatia', BG:'Bulgaria', RS:'Serbia', LT:'Lithuania', LV:'Latvia',
+  EE:'Estonia', LU:'Luxembourg', IS:'Iceland', MT:'Malta', CY:'Cyprus',
+};
+
+function getCountryName(cc) {
+  return CC_NAMES[cc] || cc;
+}
+
+function fmt(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function fuzzyMatch(query, candidates, threshold = 0.4) {
+  const q = query.toLowerCase().trim();
+  const results = [];
+  for (const c of candidates) {
+    const cl = c.name.toLowerCase();
+    let score = 0, type = '';
+    if (q === cl) { score = 1.0; type = 'exact'; }
+    else if (cl.startsWith(q)) { score = 0.95; type = 'prefix'; }
+    else if (cl.includes(q)) { score = 0.85; type = 'contains'; }
+    else {
+      const qw = q.split(/\s+/);
+      const cw = cl.split(/\s+/);
+      if (qw.every(w => cw.some(c => c.includes(w)))) {
+        score = 0.75; type = 'word_match';
+      } else {
+        let ratio = 0;
+        const len = Math.max(q.length, cl.length);
+        if (len > 0) {
+          const matches = [...q].filter(ch => cl.includes(ch)).length;
+          ratio = (2 * matches) / (q.length + cl.length);
+        }
+        if (ratio >= threshold) { score = ratio; type = 'fuzzy'; }
+        else {
+          for (const w of qw) {
+            for (const w2 of cw) {
+              const wr = [...w].filter(ch => w2.includes(ch)).length / Math.max(w.length, w2.length);
+              if (wr >= 0.7) { score = Math.max(ratio, 0.5); type = 'partial_word'; break; }
+            }
+            if (type) break;
+          }
+        }
+      }
+    }
+    if (score > 0) results.push({...c, score, type});
+  }
+  results.sort((a, b) => b.score - a.score);
+  return results;
+}
+
+async function apiCall(payload) {
+  const resp = await fetch(API, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  return resp.json();
+}
+
+async function loadProjects() {
+  try {
+    const data = await apiCall({api: 'ListProjects', payload: {}});
+    const sel = document.getElementById('project');
+    const list = document.getElementById('projects-list');
+    (data.projects || []).sort().forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      sel.appendChild(opt);
+      const sp = document.createElement('span');
+      sp.textContent = p;
+      sp.onclick = () => { sel.value = p; document.getElementById('projects-list').classList.remove('open'); };
+      list.appendChild(sp);
+    });
+  } catch(e) { console.error('Failed to load projects', e); }
+}
+
+function toggleProjects() {
+  const el = document.getElementById('projects-list');
+  const toggle = document.getElementById('projects-toggle');
+  el.classList.toggle('open');
+  toggle.textContent = el.classList.contains('open') ? '▾ Available projects' : '▸ Available projects';
+}
+
+async function doSearch() {
+  const query = document.getElementById('search').value.trim();
+  if (!query) return;
+  const project = document.getElementById('project').value;
+  const range = document.getElementById('range').value;
+  const metric = document.getElementById('metric').value;
+  const btn = document.getElementById('btn');
+  const results = document.getElementById('results');
+  const detail = document.getElementById('detail');
+  const stats = document.getElementById('stats');
+
+  detail.classList.remove('open');
+  btn.disabled = true;
+  btn.textContent = 'Searching...';
+  results.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading company data...</div>';
+
+  try {
+    const data = await apiCall({
+      api: 'CompaniesTable',
+      payload: {project, range, metric}
+    });
+
+    currentData = data;
+    const companies = data.company || [];
+    const numbers = data.number || [];
+    const ranks = data.rank || [];
+
+    allCompanies = [];
+    for (let i = 0; i < companies.length; i++) {
+      if (companies[i] === 'All') continue;
+      allCompanies.push({
+        name: companies[i],
+        contributions: numbers[i],
+        rank: ranks[i] || i
+      });
+    }
+
+    stats.innerHTML = `
+      <div class="stat"><strong>${allCompanies.length}</strong> companies</div>
+      <div class="stat"><strong>${project}</strong></div>
+      <div class="stat"><strong>${range}</strong></div>
+      <div class="stat"><strong>${metric}</strong></div>
+    `;
+
+    const matches = fuzzyMatch(query, allCompanies);
+
+    if (matches.length === 0) {
+      results.innerHTML = `<div class="error">No companies matching "${esc(query)}" found.</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Search';
+      return;
+    }
+
+    let html = '';
+    const shown = matches.slice(0, 50);
+    shown.forEach(m => {
+      const cc = COMPANY_COUNTRIES ? COMPANY_COUNTRIES[m.name] : null;
+      const flag = cc ? cc2flag(cc) : '🏳️';
+      const countryTip = cc ? ` title="${getCountryName(cc)}"` : '';
+      html += `<div class="result-card ${m.type}" onclick="showDetail('${m.name.replace(/'/g, "\\'")}')">
+        <span class="company-name"><span class="flag"${countryTip}>${flag}</span>${esc(m.name)} <a href="${devstatsCompanyUrl(document.getElementById('project').value, m.name)}" target="_blank" class="devstats-link" title="View on DevStats">↗</a></span>
+        <div class="company-meta">
+          <span class="contrib-count">#${m.rank} · ${fmt(m.contributions)}</span>
+          <span class="match-badge ${m.type}">${m.type.replace('_', ' ')}</span>
+          <span style="color:var(--text2);font-size:0.75rem">${Math.round(m.score*100)}%</span>
+        </div>
+      </div>`;
+    });
+    if (matches.length > 50) {
+      html += `<div style="text-align:center;color:var(--text2);padding:8px;font-size:0.85rem">... and ${matches.length - 50} more matches</div>`;
+    }
+    results.innerHTML = html;
+
+  } catch(e) {
+    results.innerHTML = `<div class="error">Error: ${esc(e.message)}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Search';
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showDetail(companyName) {
+  if (!currentData) return;
+  const detail = document.getElementById('detail');
+  const companies = currentData.company || [];
+  const numbers = currentData.number || [];
+  const ranks = currentData.rank || [];
+  const project = document.getElementById('project').value;
+  const range = document.getElementById('range').value;
+  const metric = document.getElementById('metric').value;
+
+  let targetIdx = -1;
+  for (let i = 0; i < companies.length; i++) {
+    if (companies[i] === companyName) { targetIdx = i; break; }
+  }
+
+  if (targetIdx < 0) {
+    detail.innerHTML = `<div class="error">Company "${esc(companyName)}" not found in data.</div>`;
+    detail.classList.add('open');
+    return;
+  }
+
+  const targetContrib = numbers[targetIdx];
+  const targetRank = ranks[targetIdx] || targetIdx;
+  const cc = COMPANY_COUNTRIES ? COMPANY_COUNTRIES[companyName] : null;
+  const flag = cc ? cc2flag(cc) : '🏳️';
+  const countryName = cc ? getCountryName(cc) : 'Unknown';
+
+  let tableHtml = `<table><thead><tr><th class="rank-col">#</th><th>Company</th><th>${metric}</th></tr></thead><tbody>`;
+
+  for (let i = 0; i < Math.min(companies.length, 2000); i++) {
+    if (companies[i] === 'All') continue;
+    const isHighlight = i === targetIdx;
+    const isNearTarget = Math.abs(i - targetIdx) <= 2;
+    const isTopN = ranks[i] <= 20;
+    if (!isHighlight && !isTopN && !isNearTarget) continue;
+
+    const cc2 = COMPANY_COUNTRIES ? COMPANY_COUNTRIES[companies[i]] : null;
+    const f2 = cc2 ? cc2flag(cc2) : '';
+    const hlClass = isHighlight ? 'highlight' : '';
+    const marker = isHighlight ? ' ◀' : '';
+    tableHtml += `<tr class="${hlClass}"><td class="rank-col">${ranks[i] || i}</td><td>${f2} ${esc(companies[i])}${marker}</td><td class="contrib-col">${fmt(numbers[i])}</td></tr>`;
+  }
+  tableHtml += '</tbody></table>';
+
+  detail.innerHTML = `
+    <div class="detail-header">${flag} ${esc(companyName)}</div>
+    <div class="detail-meta">${countryName} · #${targetRank} in ${project} · ${range} · ${fmt(targetContrib)} ${metric.toLowerCase()}</div>
+    <div class="table-wrapper">${tableHtml}</div>
+  `;
+  detail.classList.add('open');
+  detail.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function switchTab(tab) {
+  document.getElementById('tab-search').classList.toggle('active', tab === 'search');
+  document.getElementById('tab-europe').classList.toggle('active', tab === 'europe');
+  document.getElementById('panel-search').style.display = tab === 'search' ? '' : 'none';
+  document.getElementById('panel-europe').style.display = tab === 'europe' ? '' : 'none';
+  if (tab === 'europe' && !europeData) loadEurope();
+}
+
+let europeData = null;
+
+async function loadEurope() {
+  const project = document.getElementById('eu-project').value;
+  const range = document.getElementById('eu-range').value;
+  const metric = document.getElementById('eu-metric').value;
+  const euOnly = document.getElementById('eu-only').checked;
+  const regionLabel = euOnly ? 'EU' : 'Europe';
+  const regionSet = euOnly ? new Set(EU_COUNTRIES) : EUROPE_COUNTRIES;
+
+  const loading = document.getElementById('europe-loading');
+  const table = document.getElementById('europe-table');
+  const stats = document.getElementById('europe-stats');
+  loading.style.display = '';
+  table.innerHTML = '';
+
+  try {
+    const data = await apiCall({
+      api: 'CompaniesTable',
+      payload: {project, range, metric}
+    });
+
+    const companies = data.company || [];
+    const numbers = data.number || [];
+    const ranks = data.rank || [];
+
+    // Filter European companies
+    const euroCompanies = [];
+    for (let i = 0; i < companies.length; i++) {
+      if (companies[i] === 'All') continue;
+      const cc = COMPANY_COUNTRIES ? COMPANY_COUNTRIES[companies[i]] : null;
+      if (cc && regionSet.has(cc)) {
+        euroCompanies.push({
+          name: companies[i],
+          contributions: numbers[i],
+          rank: ranks[i] || i,
+          cc: cc
+        });
+      }
+    }
+
+    europeData = data;
+    const totalContrib = euroCompanies.reduce((s, c) => s + c.contributions, 0);
+
+    // Sort by contributions descending
+    euroCompanies.sort((a, b) => b.contributions - a.contributions);
+
+    // Recalculate global ranks within Europe
+    euroCompanies.forEach((c, i) => c.euroRank = i + 1);
+
+    stats.innerHTML = `
+      <div class="stat"><strong>${euroCompanies.length}</strong> companies</div>
+      <div class="stat"><strong>${new Set(euroCompanies.map(c => c.cc)).size}</strong> countries</div>
+      <div class="stat"><strong>${fmt(totalContrib)}</strong> total ${metric.toLowerCase()}</div>
+      <div class="stat"><strong>${project}</strong> · ${range}</div>
+    `;
+
+    let html = '<table><thead><tr><th class="rank-col">Euro</th><th class="rank-col">Global</th><th>Company</th><th>Country</th><th class="contrib-col">' + metric + '</th></tr></thead><tbody>';
+    for (const c of euroCompanies) {
+      const flag = cc2flag(c.cc);
+      const countryName = getCountryName(c.cc);
+      html += `<tr style="cursor:pointer" onclick="switchTab('search');document.getElementById('search').value='${c.name.replace(/'/g, "\\'")}';doSearch();">
+        <td class="rank-col">${c.euroRank}</td>
+        <td class="rank-col">${c.rank}</td>
+        <td>${esc(c.name)} <span class="flag" title="${countryName}">${flag}</span> <a href="${devstatsCompanyUrl(project, c.name)}" target="_blank" class="devstats-link" title="View on DevStats">↗</a></td>
+        <td style="font-size:0.8rem;color:var(--text2)">${countryName}</td>
+        <td class="contrib-col">${fmt(c.contributions)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    document.getElementById('europe-table').innerHTML = `<div class="table-wrapper">${html}</div>`;
+
+    // Build grouped view
+    const byCountry = {};
+    for (const c of euroCompanies) {
+      if (!byCountry[c.cc]) byCountry[c.cc] = [];
+      byCountry[c.cc].push(c);
+    }
+    const countryTotals = Object.entries(byCountry).map(([cc, cos]) => ({
+      cc, total: cos.reduce((s, c) => s + c.contributions, 0), count: cos.length
+    }));
+    countryTotals.sort((a, b) => b.total - a.total);
+
+    let gHtml = '';
+    for (const {cc, total, count} of countryTotals) {
+      const flag = cc2flag(cc);
+      const name = getCountryName(cc);
+      const cos = byCountry[cc].sort((a, b) => b.contributions - a.contributions);
+      gHtml += `<div class="country-group">
+        <h3>${flag} ${name}</h3>
+        <div class="country-total">${count} companies · ${fmt(total)} total ${metric.toLowerCase()}</div>`;
+      for (const c of cos) {
+        gHtml += `<div class="country-row" onclick="switchTab('search');document.getElementById('search').value='${c.name.replace(/'/g, "\\'")}';doSearch();">
+          <span style="color:var(--text2);font-size:0.8rem;width:40px">#${c.euroRank}</span>
+          <span style="color:var(--text2);font-size:0.7rem;width:40px">(g${c.rank})</span>
+          <span style="font-weight:500">${esc(c.name)}</span>
+          <a href="${devstatsCompanyUrl(project, c.name)}" target="_blank" class="devstats-link" title="View on DevStats">↗</a>
+          <span style="color:var(--text2);font-size:0.85rem">${fmt(c.contributions)}</span>
+        </div>`;
+      }
+      gHtml += '</div>';
+    }
+    document.getElementById('europe-grouped').innerHTML = gHtml;
+
+  } catch(e) {
+    table.innerHTML = `<div class="error">Error: ${esc(e.message)}</div>`;
+  }
+  loading.style.display = 'none';
+}
+
+// Project name to devstats subdomain
+const PROJECT_SUBDOMAINS = {
+  'All CNCF': 'all',
+  'Kubernetes': 'k8s',
+  'Prometheus': 'prometheus',
+  'Envoy': 'envoy',
+  'containerd': 'containerd',
+  'CoreDNS': 'coredns',
+  'gRPC': 'grpc',
+  'Cloud Native Buildpacks': 'buildpacks',
+  'OpenTelemetry': 'opentelemetry',
+  'Falco': 'falco',
+  'Fluentd': 'fluentd',
+  'Harbor': 'harbor',
+  'Helm': 'helm',
+  'Knative': 'knative',
+  'Linkerd': 'linkerd',
+  'OPA': 'opa',
+  'Rook': 'rook',
+  'Tikv': 'tikv',
+  'Vitess': 'vitess',
+  'Cilium': 'cilium',
+  'Argo': 'argo',
+  'Cortex': 'cortex',
+  'CubeFS': 'cubefs',
+  'Dapr': 'dapr',
+  'Dragonfly': 'dragonfly',
+  'KEDA': 'keda',
+  'KubeVela': 'kubevela',
+  'OpenYurt': 'openyurt',
+  'WasmEdge': 'wasmedge',
+};
+
+function devstatsSubdomain(project) {
+  if (PROJECT_SUBDOMAINS[project]) return PROJECT_SUBDOMAINS[project];
+  // Fallback: slugify project name
+  return project.toLowerCase().replace(/[^a-z0-9]+/g, '').replace(/^-|-$/g, '');
+}
+
+function devstatsCompanyUrl(project, company) {
+  const sub = devstatsSubdomain(project);
+  return `https://${sub}.devstats.cncf.io/d/4/company-statistics-by-repository-group?var-companies=${encodeURIComponent(company)}&var-period=Last%20year&orgId=1`;
+}
+
+function devstatsCompaniesUrl(project) {
+  const sub = devstatsSubdomain(project);
+  return `https://${sub}.devstats.cncf.io/d/5/companies-table?var-period=Last%20year`;
+}
+
+// Switch between flat and grouped Europe views
+function switchEuropeView(view) {
+  document.getElementById('eu-view-flat').classList.toggle('active', view === 'flat');
+  document.getElementById('eu-view-grouped').classList.toggle('active', view === 'grouped');
+  document.getElementById('europe-table').style.display = view === 'flat' ? '' : 'none';
+  document.getElementById('europe-grouped').style.display = view === 'grouped' ? '' : 'none';
+}
+
+// Populate EU project dropdown
+function populateEuProjects() {
+  const sel = document.getElementById('eu-project');
+  const srcSel = document.getElementById('project');
+  for (const opt of srcSel.options) {
+    const newOpt = opt.cloneNode(true);
+    sel.appendChild(newOpt);
+  }
+}
+
+// Override loadProjects to also populate EU dropdown
+const origLoadProjects = loadProjects;
+loadProjects = async function() {
+  await origLoadProjects();
+  populateEuProjects();
+};
+
+document.getElementById('search').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+loadProjects();
+</script>
+    <footer class="footer">
+      Made with 🐦‍⬛ by <a href="https://lwcn.dev" target="_blank">Mario Fahlandt</a> · Data from <a href="https://devstats.cncf.io" target="_blank">CNCF DevStats</a>
+      <br>
+      <a href="https://github.com/mfahlandt/companystats" target="_blank">Source on GitHub</a>
+    </footer>
+</body>
+</html>
