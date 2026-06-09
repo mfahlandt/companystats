@@ -31,6 +31,16 @@ This is an unofficial side project. Not affiliated with CNCF. Data comes from [d
 
 No build step, no backend, no framework. Just HTML + JS + CSS calling the DevStats API directly (it has open CORS). 
 
+## Contributing
+
+Country mapping wrong? Company relocated? You can fix it:
+
+1. Open [`company-countries.js`](https://github.com/mfahlandt/companystats/edit/main/company-countries.js)
+2. Find the company, change the country code (ISO 3166-1 alpha-2)
+3. Submit a PR
+
+No build step — the file is just a JS object literal. Keep it sorted alphabetically.
+
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE).
