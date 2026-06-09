@@ -265,6 +265,15 @@ tr.highlight td { background: #1a2e1a; }
 .footer a:hover {
   text-decoration: underline;
 }
+.disclaimer-banner {
+  font-size: 0.78rem;
+  color: var(--orange);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+.disclaimer-banner a {
+  color: var(--accent);
+}
 .disclaimer {
   display: inline-block;
   max-width: 600px;
@@ -384,6 +393,7 @@ tr.highlight td { background: #1a2e1a; }
 <body>
 <div class="container">
   <h1>🔍 DevStats CNCF Company Search</h1>
+  <p class="disclaimer-banner">⚠️ Unofficial side project · Not affiliated with CNCF · Country = company HQ (approximate) · Data from <a href="https://devstats.cncf.io" target="_blank">devstats.cncf.io</a></p>
   <p class="subtitle">Fuzzy search across companies contributing to CNCF projects · Data from <a href="https://devstats.cncf.io" target="_blank" style="color:var(--accent)">devstats.cncf.io</a></p>
 
   <div class="tabs">
