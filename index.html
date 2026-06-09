@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DevStats CNCF Company Search</title>
+<title>CompanyStats — CNCF DevStats Company Search</title>
 <script src="company-countries.js"></script>
 <style>
 :root {
@@ -301,7 +301,7 @@ tr.highlight td { background: #1a2e1a; }
 }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.europe-controls {
+.region-controls {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
@@ -317,31 +317,6 @@ tr.highlight td { background: #1a2e1a; }
   cursor: pointer;
 }
 .toggle-label input { cursor: pointer; }
-.eu-flag { font-size: 1rem; margin-right: 4px; }
-.country-group {
-  margin-bottom: 16px;
-}
-.country-group h3 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-  padding: 4px 0;
-}
-.country-group .country-total {
-  font-size: 0.8rem;
-  color: var(--text2);
-  margin-bottom: 8px;
-}
-.europe-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background 0.15s;
-  cursor: pointer;
-}
-.europe-row:hover { background: #1c2333; }
 .sub-tabs {
   display: flex;
   gap: 0;
@@ -386,19 +361,20 @@ tr.highlight td { background: #1a2e1a; }
   transition: background 0.15s;
   cursor: pointer;
   font-size: 0.85rem;
+  gap: 4px;
 }
 .country-row:hover { background: #1c2333; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>🔍 DevStats CNCF Company Search</h1>
+  <h1>🔍 CompanyStats</h1>
   <p class="disclaimer-banner">⚠️ Unofficial side project · Not affiliated with CNCF · Country = company HQ (approximate) · Data from <a href="https://devstats.cncf.io" target="_blank">devstats.cncf.io</a></p>
   <p class="subtitle">Fuzzy search across companies contributing to CNCF projects · Data from <a href="https://devstats.cncf.io" target="_blank" style="color:var(--accent)">devstats.cncf.io</a></p>
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('search')" id="tab-search">🔍 Search</button>
-    <button class="tab" onclick="switchTab('europe')" id="tab-europe">🇪🇺 Europe Top</button>
+    <button class="tab" onclick="switchTab('region')" id="tab-region">🌍 Region Top</button>
   </div>
 
   <div id="panel-search">
@@ -434,31 +410,37 @@ tr.highlight td { background: #1a2e1a; }
     <div id="detail" class="detail-panel"></div>
   </div>
 
-  <div id="panel-europe" style="display:none">
-    <div class="europe-controls">
-      <select id="eu-project">
+  <div id="panel-region" style="display:none">
+    <div class="region-controls">
+      <select id="region" onchange="onRegionChange()">
+        <option value="europe">🇪🇺 Europe</option>
+        <option value="asia">🌏 Asia</option>
+        <option value="africa">🌍 Africa</option>
+        <option value="americas">🌎 Americas</option>
+      </select>
+      <select id="rg-project">
         <option value="All CNCF">All CNCF</option>
       </select>
-      <select id="eu-range">
+      <select id="rg-range">
         <option value="Last year">Last year</option>
         <option value="Last quarter">Last quarter</option>
         <option value="Last decade">Last decade</option>
       </select>
-      <select id="eu-metric">
+      <select id="rg-metric">
         <option value="Contributions">Contributions</option>
         <option value="Contributors">Contributors</option>
       </select>
-      <button onclick="loadEurope()">Load</button>
-      <label class="toggle-label"><input type="checkbox" id="eu-only" onchange="loadEurope()"> EU only</label>
+      <button onclick="loadRegion()">Load</button>
+      <label class="toggle-label" id="region-subset-label"><input type="checkbox" id="region-subset" onchange="loadRegion()"> EU only</label>
       <div class="sub-tabs">
-        <button class="sub-tab active" onclick="switchEuropeView('flat')" id="eu-view-flat">📊 Top List</button>
-        <button class="sub-tab" onclick="switchEuropeView('grouped')" id="eu-view-grouped">🌍 By Country</button>
+        <button class="sub-tab active" onclick="switchRegionView('flat')" id="rg-view-flat">📊 Top List</button>
+        <button class="sub-tab" onclick="switchRegionView('grouped')" id="rg-view-grouped">🌍 By Country</button>
       </div>
     </div>
-    <div id="europe-stats" class="stats"></div>
-    <div id="europe-loading" class="loading" style="display:none"><div class="spinner"></div><br>Loading Europe data...</div>
-    <div id="europe-table"></div>
-    <div id="europe-grouped" style="display:none"></div>
+    <div id="region-stats" class="stats"></div>
+    <div id="region-loading" class="loading" style="display:none"><div class="spinner"></div><br>Loading region data...</div>
+    <div id="region-table"></div>
+    <div id="region-grouped" style="display:none"></div>
   </div>
 </div>
 
@@ -474,9 +456,19 @@ function cc2flag(cc) {
   return String.fromCodePoint(base + cc.charCodeAt(0)) + String.fromCodePoint(base + cc.charCodeAt(1));
 }
 
-// European country codes
+// Region definitions
 const EU_COUNTRIES = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 const EUROPE_COUNTRIES = new Set([...EU_COUNTRIES, 'GB','NO','IS','CH','LI','MC','VA','SM','AD','RS','BA','ME','MK','AL','XK','MD','UA','BY','TR']);
+const ASIA_COUNTRIES = new Set(['CN','JP','KR','IN','SG','HK','TW','MY','TH','VN','PH','ID','PK','BD','AE','SA','IL','GE','AM','AZ','KZ','UZ','LK','MM','KH','LA','MN','NP','AF','IQ','JO','LB','OM','QA','KW','BH','YE','SY','PS','TM','TJ','KG','TL','BN','MV','BT']);
+const AFRICA_COUNTRIES = new Set(['ZA','NG','EG','KE','MA','TN','DZ','GH','ET','SN','CM','CI','MG','TZ','UG','MZ','ZW','BW','NA','MU','SC','RW','BI','KM','DJ','ER','GA','GM','GN','GW','LS','LR','ML','MR','NE','SL','SO','SD','SS','TG','TD','CF','CG','CD','GQ','BF','BJ','MW','ZM']);
+const AMERICAS_COUNTRIES = new Set(['US','CA','MX','BR','AR','CL','CO','PE','UY','EC','VE','BO','PY','CR','PA','DO','GT','HN','SV','NI','JM','TT','BB','BS','HT','CU','PR','GY','SR']);
+
+const REGIONS = {
+  europe: { name: 'Europe', emoji: '🇪🇺', set: EUROPE_COUNTRIES, subset: { label: 'EU only', countries: new Set(EU_COUNTRIES) } },
+  asia: { name: 'Asia', emoji: '🌏', set: ASIA_COUNTRIES, subset: null },
+  africa: { name: 'Africa', emoji: '🌍', set: AFRICA_COUNTRIES, subset: null },
+  americas: { name: 'Americas', emoji: '🌎', set: AMERICAS_COUNTRIES, subset: null },
+};
 
 // Country code to country name
 const CC_NAMES = {
@@ -493,6 +485,27 @@ const CC_NAMES = {
   BD:'Bangladesh', RO:'Romania', GR:'Greece', SK:'Slovakia', SI:'Slovenia',
   HR:'Croatia', BG:'Bulgaria', RS:'Serbia', LT:'Lithuania', LV:'Latvia',
   EE:'Estonia', LU:'Luxembourg', IS:'Iceland', MT:'Malta', CY:'Cyprus',
+  GE:'Georgia', AM:'Armenia', AZ:'Azerbaijan', KZ:'Kazakhstan', UZ:'Uzbekistan',
+  LK:'Sri Lanka', MM:'Myanmar', KH:'Cambodia', LA:'Laos', MN:'Mongolia',
+  NP:'Nepal', AF:'Afghanistan', IQ:'Iraq', JO:'Jordan', LB:'Lebanon',
+  OM:'Oman', QA:'Qatar', KW:'Kuwait', BH:'Bahrain', YE:'Yemen',
+  SY:'Syria', PS:'Palestine', TM:'Turkmenistan', TJ:'Tajikistan', KG:'Kyrgyzstan',
+  TL:'Timor-Leste', BN:'Brunei', MV:'Maldives', BT:'Bhutan',
+  MA:'Morocco', TN:'Tunisia', DZ:'Algeria', GH:'Ghana', ET:'Ethiopia',
+  SN:'Senegal', CM:'Cameroon', CI:'Ivory Coast', MG:'Madagascar', TZ:'Tanzania',
+  UG:'Uganda', MZ:'Mozambique', ZW:'Zimbabwe', BW:'Botswana', NA:'Namibia',
+  MU:'Mauritius', SC:'Seychelles', RW:'Rwanda', BI:'Burundi', KM:'Comoros',
+  DJ:'Djibouti', ER:'Eritrea', GA:'Gabon', GM:'Gambia', GN:'Guinea',
+  GW:'Guinea-Bissau', LS:'Lesotho', LR:'Liberia', ML:'Mali', MR:'Mauritania',
+  NE:'Niger', SL:'Sierra Leone', SO:'Somalia', SD:'Sudan', SS:'South Sudan',
+  TG:'Togo', TD:'Chad', CF:'Central African Republic', CG:'Congo',
+  CD:'DR Congo', GQ:'Equatorial Guinea', BF:'Burkina Faso', BJ:'Benin',
+  MW:'Malawi', ZM:'Zambia',
+  PE:'Peru', UY:'Uruguay', EC:'Ecuador', VE:'Venezuela', BO:'Bolivia',
+  PY:'Paraguay', CR:'Costa Rica', PA:'Panama', DO:'Dominican Republic',
+  GT:'Guatemala', HN:'Honduras', SV:'El Salvador', NI:'Nicaragua',
+  JM:'Jamaica', TT:'Trinidad and Tobago', BB:'Barbados', BS:'Bahamas',
+  HT:'Haiti', CU:'Cuba', PR:'Puerto Rico', GY:'Guyana', SR:'Suriname',
 };
 
 function getCountryName(cc) {
@@ -717,27 +730,48 @@ function showDetail(companyName) {
 
 function switchTab(tab) {
   document.getElementById('tab-search').classList.toggle('active', tab === 'search');
-  document.getElementById('tab-europe').classList.toggle('active', tab === 'europe');
+  document.getElementById('tab-region').classList.toggle('active', tab === 'region');
   document.getElementById('panel-search').style.display = tab === 'search' ? '' : 'none';
-  document.getElementById('panel-europe').style.display = tab === 'europe' ? '' : 'none';
-  if (tab === 'europe' && !europeData) loadEurope();
+  document.getElementById('panel-region').style.display = tab === 'region' ? '' : 'none';
+  if (tab === 'region' && !regionData) loadRegion();
 }
 
-let europeData = null;
+let regionData = null;
 
-async function loadEurope() {
-  const project = document.getElementById('eu-project').value;
-  const range = document.getElementById('eu-range').value;
-  const metric = document.getElementById('eu-metric').value;
-  const euOnly = document.getElementById('eu-only').checked;
-  const regionLabel = euOnly ? 'EU' : 'Europe';
-  const regionSet = euOnly ? new Set(EU_COUNTRIES) : EUROPE_COUNTRIES;
+function onRegionChange() {
+  const regionKey = document.getElementById('region').value;
+  const regionDef = REGIONS[regionKey];
+  const subsetLabel = document.getElementById('region-subset-label');
+  const subsetCheckbox = document.getElementById('region-subset');
+  if (regionDef.subset) {
+    subsetLabel.style.display = '';
+    subsetLabel.innerHTML = `<input type="checkbox" id="region-subset" onchange="loadRegion()"> ${regionDef.subset.label}`;
+  } else {
+    subsetLabel.style.display = 'none';
+    subsetCheckbox.checked = false;
+  }
+  loadRegion();
+}
 
-  const loading = document.getElementById('europe-loading');
-  const table = document.getElementById('europe-table');
-  const stats = document.getElementById('europe-stats');
+async function loadRegion() {
+  const regionKey = document.getElementById('region').value;
+  const regionDef = REGIONS[regionKey];
+  const project = document.getElementById('rg-project').value;
+  const range = document.getElementById('rg-range').value;
+  const metric = document.getElementById('rg-metric').value;
+  const subsetCheckbox = document.getElementById('region-subset');
+  const useSubset = regionDef.subset && subsetCheckbox && subsetCheckbox.checked;
+
+  const activeSet = useSubset ? regionDef.subset.countries : regionDef.set;
+  const regionLabel = useSubset ? regionDef.subset.label.replace(' only', '') : regionDef.name;
+
+  const loading = document.getElementById('region-loading');
+  const table = document.getElementById('region-table');
+  const stats = document.getElementById('region-stats');
+  const grouped = document.getElementById('region-grouped');
   loading.style.display = '';
   table.innerHTML = '';
+  grouped.innerHTML = '';
 
   try {
     const data = await apiCall({
@@ -749,13 +783,13 @@ async function loadEurope() {
     const numbers = data.number || [];
     const ranks = data.rank || [];
 
-    // Filter European companies
-    const euroCompanies = [];
+    // Filter companies by region
+    const regionCompanies = [];
     for (let i = 0; i < companies.length; i++) {
       if (companies[i] === 'All') continue;
       const cc = COMPANY_COUNTRIES ? COMPANY_COUNTRIES[companies[i]] : null;
-      if (cc && regionSet.has(cc)) {
-        euroCompanies.push({
+      if (cc && activeSet.has(cc)) {
+        regionCompanies.push({
           name: companies[i],
           contributions: numbers[i],
           rank: ranks[i] || i,
@@ -764,28 +798,29 @@ async function loadEurope() {
       }
     }
 
-    europeData = data;
-    const totalContrib = euroCompanies.reduce((s, c) => s + c.contributions, 0);
+    regionData = data;
+    const totalContrib = regionCompanies.reduce((s, c) => s + c.contributions, 0);
 
     // Sort by contributions descending
-    euroCompanies.sort((a, b) => b.contributions - a.contributions);
+    regionCompanies.sort((a, b) => b.contributions - a.contributions);
 
-    // Recalculate global ranks within Europe
-    euroCompanies.forEach((c, i) => c.euroRank = i + 1);
+    // Assign region rank
+    regionCompanies.forEach((c, i) => c.regionRank = i + 1);
 
     stats.innerHTML = `
-      <div class="stat"><strong>${euroCompanies.length}</strong> companies</div>
-      <div class="stat"><strong>${new Set(euroCompanies.map(c => c.cc)).size}</strong> countries</div>
+      <div class="stat"><strong>${regionCompanies.length}</strong> companies</div>
+      <div class="stat"><strong>${new Set(regionCompanies.map(c => c.cc)).size}</strong> countries</div>
       <div class="stat"><strong>${fmt(totalContrib)}</strong> total ${metric.toLowerCase()}</div>
       <div class="stat"><strong>${project}</strong> · ${range}</div>
     `;
 
-    let html = '<table><thead><tr><th class="rank-col">Euro</th><th class="rank-col">Global</th><th>Company</th><th>Country</th><th class="contrib-col">' + metric + '</th></tr></thead><tbody>';
-    for (const c of euroCompanies) {
+    // Flat table
+    let html = '<table><thead><tr><th class="rank-col">' + regionLabel + '</th><th class="rank-col">Global</th><th>Company</th><th>Country</th><th class="contrib-col">' + metric + '</th></tr></thead><tbody>';
+    for (const c of regionCompanies) {
       const flag = cc2flag(c.cc);
       const countryName = getCountryName(c.cc);
       html += `<tr style="cursor:pointer" onclick="switchTab('search');document.getElementById('search').value='${c.name.replace(/'/g, "\\'")}';doSearch();">
-        <td class="rank-col">${c.euroRank}</td>
+        <td class="rank-col">${c.regionRank}</td>
         <td class="rank-col">${c.rank}</td>
         <td>${esc(c.name)} <span class="flag" title="${countryName}">${flag}</span> <a href="${devstatsCompanyUrl(project, c.name)}" target="_blank" class="devstats-link" title="View on DevStats">↗</a></td>
         <td style="font-size:0.8rem;color:var(--text2)">${countryName}</td>
@@ -793,11 +828,11 @@ async function loadEurope() {
       </tr>`;
     }
     html += '</tbody></table>';
-    document.getElementById('europe-table').innerHTML = `<div class="table-wrapper">${html}</div>`;
+    table.innerHTML = `<div class="table-wrapper">${html}</div>`;
 
-    // Build grouped view
+    // Grouped view
     const byCountry = {};
-    for (const c of euroCompanies) {
+    for (const c of regionCompanies) {
       if (!byCountry[c.cc]) byCountry[c.cc] = [];
       byCountry[c.cc].push(c);
     }
@@ -816,7 +851,7 @@ async function loadEurope() {
         <div class="country-total">${count} companies · ${fmt(total)} total ${metric.toLowerCase()}</div>`;
       for (const c of cos) {
         gHtml += `<div class="country-row" onclick="switchTab('search');document.getElementById('search').value='${c.name.replace(/'/g, "\\'")}';doSearch();">
-          <span style="color:var(--text2);font-size:0.8rem;width:40px">#${c.euroRank}</span>
+          <span style="color:var(--text2);font-size:0.8rem;width:40px">#${c.regionRank}</span>
           <span style="color:var(--text2);font-size:0.7rem;width:40px">(g${c.rank})</span>
           <span style="font-weight:500">${esc(c.name)}</span>
           <a href="${devstatsCompanyUrl(project, c.name)}" target="_blank" class="devstats-link" title="View on DevStats">↗</a>
@@ -825,7 +860,7 @@ async function loadEurope() {
       }
       gHtml += '</div>';
     }
-    document.getElementById('europe-grouped').innerHTML = gHtml;
+    grouped.innerHTML = gHtml;
 
   } catch(e) {
     table.innerHTML = `<div class="error">Error: ${esc(e.message)}</div>`;
@@ -868,7 +903,6 @@ const PROJECT_SUBDOMAINS = {
 
 function devstatsSubdomain(project) {
   if (PROJECT_SUBDOMAINS[project]) return PROJECT_SUBDOMAINS[project];
-  // Fallback: slugify project name
   return project.toLowerCase().replace(/[^a-z0-9]+/g, '').replace(/^-|-$/g, '');
 }
 
@@ -882,17 +916,17 @@ function devstatsCompaniesUrl(project) {
   return `https://${sub}.devstats.cncf.io/d/5/companies-table?var-period=Last%20year`;
 }
 
-// Switch between flat and grouped Europe views
-function switchEuropeView(view) {
-  document.getElementById('eu-view-flat').classList.toggle('active', view === 'flat');
-  document.getElementById('eu-view-grouped').classList.toggle('active', view === 'grouped');
-  document.getElementById('europe-table').style.display = view === 'flat' ? '' : 'none';
-  document.getElementById('europe-grouped').style.display = view === 'grouped' ? '' : 'none';
+// Switch between flat and grouped region views
+function switchRegionView(view) {
+  document.getElementById('rg-view-flat').classList.toggle('active', view === 'flat');
+  document.getElementById('rg-view-grouped').classList.toggle('active', view === 'grouped');
+  document.getElementById('region-table').style.display = view === 'flat' ? '' : 'none';
+  document.getElementById('region-grouped').style.display = view === 'grouped' ? '' : 'none';
 }
 
-// Populate EU project dropdown
-function populateEuProjects() {
-  const sel = document.getElementById('eu-project');
+// Populate region project dropdown
+function populateRegionProjects() {
+  const sel = document.getElementById('rg-project');
   const srcSel = document.getElementById('project');
   for (const opt of srcSel.options) {
     const newOpt = opt.cloneNode(true);
@@ -900,11 +934,11 @@ function populateEuProjects() {
   }
 }
 
-// Override loadProjects to also populate EU dropdown
+// Override loadProjects to also populate region dropdown
 const origLoadProjects = loadProjects;
 loadProjects = async function() {
   await origLoadProjects();
-  populateEuProjects();
+  populateRegionProjects();
 };
 
 document.getElementById('search').addEventListener('keydown', e => {
