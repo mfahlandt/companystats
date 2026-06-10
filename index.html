@@ -447,19 +447,18 @@ tr.highlight td { background: #1a2e1a; }
   <div id="panel-countries" style="display:none">
     <p class="disclaimer-banner" style="margin-bottom:12px">🗺️ Contributors by country (not company HQ) — from DevStats country analysis · Data is yearly active contributors per country</p>
     <div class="region-controls">
-      <select id="ct-view">
+      <select id="ct-view" onchange="renderCountriesView()">
         <option value="region">🌍 By Region</option>
         <option value="top20">📊 Top 20 Countries</option>
         <option value="trend">📈 Year-over-Year Trend</option>
       </select>
-      <select id="ct-metric">
+      <select id="ct-metric" onchange="renderCountriesView()">
         <option value="contributors">Contributors</option>
         <option value="commits">Commits</option>
       </select>
-      <button onclick="loadCountries()">Load</button>
     </div>
     <div id="countries-stats" class="stats"></div>
-    <div id="countries-loading" class="loading" style="display:none"><div class="spinner"></div><br>Loading country data from DevStats...</div>
+    <div id="countries-updated" style="font-size:0.75rem;color:var(--text2);margin-bottom:12px"></div>
     <div id="countries-table" class="table-wrapper"></div>
     <div id="countries-grouped" style="display:none"></div>
   </div>
@@ -757,7 +756,7 @@ function switchTab(tab) {
   document.getElementById('panel-region').style.display = tab === 'region' ? '' : 'none';
   document.getElementById('panel-countries').style.display = tab === 'countries' ? '' : 'none';
   if (tab === 'region' && !regionData) loadRegion();
-  if (tab === 'countries' && !countriesData) loadCountries();
+  if (tab === 'countries') { loadCountries(); }
 }
 
 let regionData = null;
@@ -965,296 +964,80 @@ loadProjects = async function() {
   populateRegionProjects();
 };
 
-// === COUNTRIES TAB ===
-const GRAFANA_API = 'https://all.devstats.cncf.io/api/ds/query';
+// === COUNTRIES TAB (Embedded Data — no API calls needed) ===
+const COUNTRIES_DATA = {"lastUpdated":"2026-06-10T07:20:43.013830+00:00","contributors":{"yearly":{"2014":{"Sweden":10,"China":36,"United States":333,"France":26,"Norway":5,"Denmark":5,"Romania":2,"Spain":7,"Hong Kong":1,"Viet Nam":2,"Italy":8,"Germany":39,"Singapore":3,"Switzerland":7,"Nicaragua":4,"Slovakia":1,"Russian Federation":7,"Bosnia and Herzegovina":3,"Japan":82,"Australia":11,"Netherlands":10,"Poland":11,"Taiwan Province of China":6,"Philippines":3,"India":11,"South Africa":2,"Ireland":1,"Korea Republic of":9,"Thailand":1,"Czech Republic":9,"United Kingdom":26,"Brazil":8,"Portugal":3,"Canada":14,"Greece":3,"Finland":4,"Slovenia":3,"United Arab Emirates":1,"Turkey":6,"Mexico":1,"Argentina":1,"Malaysia":1,"Austria":1,"Algeria":1,"Belgium":1,"Hungary":2,"Bulgaria":1,"New Zealand":1,"Kenya":1,"Nepal":1,"Indonesia":2,"Israel":1,"Croatia":1,"Cameroon":1,"Sri Lanka":1},"2015":{"Sweden":38,"China":160,"United States":1059,"France":75,"Norway":16,"Denmark":7,"Romania":3,"Spain":38,"Hong Kong":5,"Viet Nam":8,"Italy":14,"Germany":196,"Singapore":13,"Switzerland":26,"Nicaragua":23,"Slovakia":2,"Russian Federation":31,"Malta":1,"Japan":116,"Australia":70,"Egypt":2,"Netherlands":47,"Poland":46,"Taiwan Province of China":17,"Philippines":7,"India":69,"South Africa":11,"Ireland":12,"Korea Republic of":15,"Thailand":6,"Czech Republic":23,"United Kingdom":151,"Brazil":24,"Portugal":12,"Canada":64,"Saudi Arabia":1,"Greece":4,"Finland":12,"Estonia":6,"Slovenia":5,"United Arab Emirates":2,"Turkey":8,"Mexico":6,"Argentina":8,"Malaysia":4,"Austria":13,"Myanmar":1,"Mauritius":1,"Belgium":13,"Hungary":12,"Bulgaria":5,"Lithuania":5,"New Zealand":13,"Iran Islamic Republic of":5,"Ukraine":16,"Kenya":3,"Nepal":3,"Peru":1,"Indonesia":7,"Israel":17,"Latvia":1,"Chile":3,"Pakistan":3,"Benin":1,"Morocco":1,"Croatia":2,"Moldova Republic of":1,"Costa Rica":1,"Colombia":3,"Syrian Arab Republic":1,"Nigeria":2,"Jordan":1,"Iceland":1,"Venezuela Bolivarian Republic of":2,"Albania":1,"Cyprus":1,"Cameroon":1,"Bangladesh":1,"Serbia and Montenegro":1,"Luxembourg":2,"Belarus":5,"Puerto Rico":1,"Antarctica":1,"Saint Lucia":1,"New Caledonia":1,"Tanzania United Republic of":2,"Georgia":2,"Sri Lanka":4,"Bolivia Plurinational State of":2,"Kazakhstan":2,"Gibraltar":1,"Jamaica":1,"Rwanda":1,"Congo the Democratic Republic of the":2,"Armenia":1,"Afghanistan":1,"Panama":1},"2016":{"Sweden":88,"China":387,"United States":2178,"France":174,"Norway":47,"Denmark":24,"Romania":18,"Spain":80,"Hong Kong":6,"Viet Nam":20,"Italy":45,"Germany":436,"Singapore":28,"Switzerland":69,"Nicaragua":59,"Slovakia":6,"Russian Federation":90,"Malta":2,"Japan":135,"Australia":144,"Egypt":5,"Netherlands":133,"Poland":101,"Taiwan Province of China":29,"Philippines":12,"India":171,"South Africa":31,"Ireland":16,"Korea Republic of":26,"Thailand":15,"Czech Republic":50,"United Kingdom":343,"Brazil":47,"Portugal":22,"Canada":143,"Saudi Arabia":1,"Greece":10,"Finland":32,"Estonia":11,"Slovenia":3,"United Arab Emirates":7,"Turkey":16,"Mexico":13,"Argentina":15,"Tunisia":4,"Uruguay":3,"Malaysia":6,"Austria":28,"Algeria":1,"Myanmar":3,"Mauritius":2,"Belgium":34,"Hungary":17,"Bulgaria":7,"Lithuania":9,"New Zealand":16,"Iran Islamic Republic of":11,"Ukraine":47,"Kenya":5,"Nepal":2,"Peru":2,"Indonesia":16,"Israel":42,"Latvia":6,"Chile":10,"Paraguay":1,"Pakistan":6,"Benin":1,"Morocco":5,"Croatia":4,"Moldova Republic of":3,"Costa Rica":1,"Colombia":7,"Syrian Arab Republic":2,"Ghana":1,"Nigeria":8,"Lebanon":2,"Iceland":7,"Venezuela Bolivarian Republic of":2,"Albania":2,"Cyprus":3,"Bangladesh":3,"Serbia and Montenegro":2,"El Salvador":1,"Luxembourg":3,"Belarus":20,"Puerto Rico":1,"Antarctica":2,"Saint Lucia":1,"New Caledonia":1,"Tanzania United Republic of":3,"Georgia":1,"Sri Lanka":5,"Bolivia Plurinational State of":4,"Kazakhstan":5,"Rwanda":1,"Dominican Republic":3,"Armenia":3,"Ethiopia":1,"Afghanistan":1,"Guatemala":1,"Panama":1,"Timor-Leste":1,"Mozambique":2,"Serbia":1,"R\u00e9union":1,"Azerbaijan":1,"Madagascar":1,"Lesotho":1},"2017":{"Sweden":157,"China":719,"United States":3913,"France":377,"Norway":79,"Denmark":63,"Uganda":2,"Romania":50,"Spain":179,"Hong Kong":25,"Viet Nam":46,"Italy":90,"Germany":816,"Singapore":53,"Switzerland":121,"Nicaragua":111,"Slovakia":16,"Russian Federation":198,"Bosnia and Herzegovina":4,"Malta":4,"Japan":188,"Australia":312,"Egypt":7,"Netherlands":273,"Poland":156,"Taiwan Province of China":55,"Philippines":25,"India":504,"South Africa":60,"Ireland":23,"Korea Republic of":60,"Thailand":35,"Czech Republic":95,"United Kingdom":650,"Brazil":135,"Portugal":50,"Canada":284,"Saudi Arabia":1,"Greece":25,"Finland":69,"Estonia":11,"Slovenia":11,"United Arab Emirates":13,"Turkey":38,"Mexico":29,"Argentina":38,"Tunisia":12,"Uruguay":2,"Malaysia":18,"Austria":56,"Algeria":6,"Myanmar":1,"Mauritius":3,"Belgium":75,"Hungary":50,"Bulgaria":23,"Lithuania":12,"New Zealand":45,"Iran Islamic Republic of":27,"Ukraine":81,"Kenya":9,"Nepal":6,"Peru":3,"Indonesia":35,"Israel":102,"Latvia":13,"Chile":13,"Paraguay":3,"Pakistan":22,"Benin":1,"Morocco":6,"Croatia":17,"Moldova Republic of":6,"Costa Rica":6,"Colombia":20,"Syrian Arab Republic":3,"Ghana":1,"Nigeria":12,"Jordan":1,"Lebanon":4,"Iceland":9,"Venezuela Bolivarian Republic of":8,"Albania":5,"Cyprus":2,"Cameroon":4,"Bangladesh":16,"Serbia and Montenegro":12,"Luxembourg":6,"Belarus":21,"Antarctica":2,"New Caledonia":1,"Tanzania United Republic of":1,"Zimbabwe":3,"Georgia":2,"Sri Lanka":8,"Bolivia Plurinational State of":8,"Andorra":3,"Kazakhstan":6,"Cambodia":3,"Oman":1,"Jamaica":2,"Rwanda":1,"Dominican Republic":4,"Congo the Democratic Republic of the":1,"Armenia":2,"Ecuador":3,"Senegal":3,"Angola":3,"Guatemala":3,"Uzbekistan":1,"Timor-Leste":1,"Mozambique":1,"Serbia":5,"R\u00e9union":2,"Eritrea":2,"Kuwait":1,"Qatar":1,"Belize":1,"Azerbaijan":1,"C\u00f4te Divoire":3,"Kyrgyzstan":5,"Cuba":1,"Faroe Islands":1,"Bhutan":1,"Northern Mariana Islands":1,"Liberia":1,"Palestine State of":1},"2018":{"Sweden":232,"China":1225,"United States":5564,"France":651,"Norway":111,"Denmark":96,"Uganda":3,"Romania":90,"Spain":309,"Hong Kong":53,"Viet Nam":73,"Italy":167,"Germany":1260,"Singapore":81,"Switzerland":193,"Nicaragua":157,"Slovakia":27,"Russian Federation":269,"Bosnia and Herzegovina":8,"Malta":9,"Japan":321,"Australia":475,"Egypt":27,"Netherlands":362,"Poland":217,"Taiwan Province of China":83,"Philippines":47,"India":1003,"South Africa":89,"Ireland":41,"Korea Republic of":123,"Thailand":52,"Czech Republic":145,"United Kingdom":1033,"Brazil":254,"Portugal":70,"Canada":511,"Saudi Arabia":8,"Greece":31,"Finland":110,"Estonia":26,"Slovenia":18,"United Arab Emirates":19,"Turkey":81,"Mexico":53,"Argentina":55,"Tunisia":17,"Uruguay":5,"Malaysia":28,"Austria":90,"Algeria":8,"Myanmar":5,"Mauritius":6,"Belgium":117,"Hungary":71,"Bulgaria":41,"Lithuania":41,"Iraq":2,"New Zealand":78,"Iran Islamic Republic of":49,"Ukraine":156,"Kenya":17,"Nepal":15,"Peru":9,"Indonesia":78,"Israel":137,"Latvia":27,"Chile":21,"Paraguay":1,"Pakistan":35,"Benin":2,"Morocco":11,"Croatia":15,"Moldova Republic of":12,"Costa Rica":2,"Colombia":41,"Syrian Arab Republic":7,"Ghana":4,"Nigeria":31,"Jordan":5,"Lebanon":5,"Iceland":18,"Venezuela Bolivarian Republic of":9,"Albania":7,"Cyprus":8,"Cameroon":5,"Bangladesh":30,"Serbia and Montenegro":22,"El Salvador":1,"Luxembourg":10,"Belarus":62,"Puerto Rico":1,"Antarctica":1,"New Caledonia":1,"Tanzania United Republic of":3,"Zimbabwe":4,"Georgia":6,"Sri Lanka":27,"Bolivia Plurinational State of":6,"Andorra":1,"Kazakhstan":12,"Cambodia":3,"Gibraltar":1,"Jamaica":4,"Rwanda":1,"Dominican Republic":5,"Congo the Democratic Republic of the":1,"Armenia":4,"Ecuador":4,"Senegal":4,"Ethiopia":2,"Angola":12,"Macao":2,"Guatemala":3,"Uzbekistan":5,"Niger":1,"Mozambique":4,"Serbia":8,"R\u00e9union":1,"Eritrea":2,"Kuwait":2,"Qatar":1,"Belize":1,"Togo":1,"Azerbaijan":4,"C\u00f4te Divoire":5,"Madagascar":2,"Macedonia the Former Yugoslav Republic of":2,"Mali":1,"Kyrgyzstan":4,"Lesotho":1,"Zambia":2,"Botswana":1,"Northern Mariana Islands":1,"Turkmenistan":1,"Papua New Guinea":3,"Bahrain":1,"Palestine State of":1,"French Polynesia":1,"Sudan":2,"Saint Vincent and the Grenadines":1,"Lao People Democratic Republic":1,"Martinique":1,"Cape Verde":1,"Trinidad and Tobago":2,"Burkina Faso":2,"Cura\u00e7ao":1,"Comoros":1,"Barbados":1,"Honduras":1,"Djibouti":1,"Nauru":1},"2019":{"Sweden":315,"China":1765,"United States":6934,"France":847,"Norway":148,"Denmark":140,"Uganda":7,"Romania":117,"Spain":434,"Hong Kong":62,"Viet Nam":104,"Italy":235,"Germany":1787,"Singapore":134,"Switzerland":265,"Nicaragua":226,"Slovakia":31,"Russian Federation":386,"Bosnia and Herzegovina":4,"Malta":13,"Japan":474,"Australia":611,"Egypt":24,"Netherlands":516,"Poland":329,"Taiwan Province of China":105,"Philippines":66,"India":1514,"South Africa":113,"Ireland":52,"Korea Republic of":190,"Thailand":65,"Czech Republic":193,"United Kingdom":1318,"Brazil":338,"Portugal":84,"Canada":621,"Saudi Arabia":15,"Greece":55,"Finland":124,"Estonia":25,"Slovenia":19,"United Arab Emirates":34,"Turkey":141,"Mexico":72,"Argentina":83,"Tunisia":20,"Uruguay":8,"Malaysia":29,"Austria":121,"Algeria":11,"Myanmar":13,"Mauritius":3,"Belgium":156,"Hungary":94,"Bulgaria":68,"Lithuania":46,"Iraq":1,"New Zealand":110,"Iran Islamic Republic of":70,"Ukraine":230,"Kenya":20,"Nepal":15,"Peru":10,"Indonesia":145,"Israel":201,"Latvia":37,"Chile":47,"Paraguay":2,"Pakistan":59,"Benin":4,"Morocco":19,"Croatia":26,"Moldova Republic of":10,"Costa Rica":9,"Colombia":41,"Syrian Arab Republic":7,"Ghana":4,"Nigeria":55,"Jordan":5,"Lebanon":5,"Iceland":13,"Venezuela Bolivarian Republic of":11,"Albania":4,"Cyprus":15,"Cameroon":8,"Bangladesh":37,"Serbia and Montenegro":21,"El Salvador":1,"Luxembourg":16,"Belarus":75,"Puerto Rico":3,"Antarctica":3,"Saint Lucia":3,"New Caledonia":2,"Tanzania United Republic of":2,"Zimbabwe":4,"Georgia":8,"Sri Lanka":46,"Bolivia Plurinational State of":10,"Andorra":2,"Kazakhstan":15,"Cambodia":3,"Oman":2,"Jamaica":4,"Rwanda":2,"Dominican Republic":9,"Congo the Democratic Republic of the":5,"Armenia":11,"Ecuador":9,"Senegal":5,"Ethiopia":5,"Angola":12,"Macao":1,"Guatemala":4,"Uzbekistan":3,"Virgin Islands U.S.":1,"Niger":1,"Mozambique":2,"Serbia":10,"R\u00e9union":2,"Eritrea":3,"Kuwait":1,"Bermuda":2,"Qatar":2,"Cayman Islands":1,"Belize":1,"Azerbaijan":8,"C\u00f4te Divoire":5,"Madagascar":2,"Macedonia the Former Yugoslav Republic of":6,"Mali":1,"Kyrgyzstan":3,"Lesotho":1,"Zambia":1,"Cuba":5,"Faroe Islands":1,"Northern Mariana Islands":1,"Korea Democratic People Republic of":1,"Turkmenistan":1,"Malawi":1,"Papua New Guinea":3,"Bahrain":1,"Palestine State of":2,"Guinea":2,"French Polynesia":2,"Sudan":3,"Burkina Faso":2,"Guyana":1,"Barbados":1,"Honduras":2,"Nauru":1,"Haiti":2,"Tajikistan":1,"Greenland":1,"Mauritania":1,"Gambia":1,"South Sudan":1,"Somalia":1,"Saint Helena Ascension and Tristan da Cunha":1,"Sierra Leone":2,"Chad":1},"2020":{"Sweden":439,"China":1923,"United States":8086,"France":1001,"Norway":184,"Denmark":188,"Uganda":7,"Romania":112,"Spain":448,"Hong Kong":64,"Viet Nam":130,"Italy":237,"Germany":2041,"Singapore":182,"Switzerland":337,"Nicaragua":242,"Slovakia":53,"Russian Federation":430,"Bosnia and Herzegovina":7,"Malta":11,"Japan":576,"Australia":744,"Egypt":35,"Netherlands":625,"Poland":420,"Taiwan Province of China":123,"Philippines":51,"India":1938,"South Africa":121,"Ireland":60,"Korea Republic of":232,"Thailand":72,"Czech Republic":259,"United Kingdom":1531,"Brazil":425,"Portugal":121,"Canada":763,"Saudi Arabia":6,"Greece":63,"Finland":168,"Estonia":36,"Slovenia":19,"United Arab Emirates":43,"Turkey":128,"Mexico":76,"Argentina":97,"Tunisia":22,"Uruguay":13,"Malaysia":39,"Austria":155,"Algeria":10,"Myanmar":6,"Mauritius":4,"Belgium":206,"Hungary":117,"Bulgaria":74,"Lithuania":61,"Iraq":2,"New Zealand":114,"Iran Islamic Republic of":66,"Ukraine":254,"Kenya":20,"Nepal":12,"Peru":16,"Indonesia":153,"Israel":256,"Latvia":40,"Chile":38,"Paraguay":5,"Pakistan":65,"Benin":3,"Morocco":17,"Croatia":31,"Moldova Republic of":10,"Costa Rica":18,"Colombia":42,"Syrian Arab Republic":8,"Ghana":3,"Nigeria":87,"Jordan":8,"Lebanon":1,"Iceland":19,"Venezuela Bolivarian Republic of":15,"Albania":4,"Cyprus":15,"Cameroon":4,"Bangladesh":39,"Serbia and Montenegro":22,"El Salvador":4,"Luxembourg":15,"Belarus":95,"Puerto Rico":2,"Antarctica":2,"Saint Lucia":2,"New Caledonia":3,"Tanzania United Republic of":7,"Zimbabwe":3,"Georgia":4,"Sri Lanka":43,"Bolivia Plurinational State of":8,"Andorra":5,"Kazakhstan":15,"Cambodia":5,"Gibraltar":2,"Jamaica":7,"Rwanda":2,"Dominican Republic":11,"Congo the Democratic Republic of the":5,"Armenia":12,"Ecuador":10,"Senegal":6,"Ethiopia":2,"Afghanistan":3,"Liechtenstein":1,"Angola":9,"Macao":1,"Guatemala":4,"Panama":1,"Timor-Leste":1,"Serbia":12,"R\u00e9union":1,"Eritrea":3,"Kuwait":1,"Qatar":3,"Belize":1,"Togo":2,"Azerbaijan":9,"C\u00f4te Divoire":5,"Madagascar":1,"Macedonia the Former Yugoslav Republic of":8,"Mali":1,"Kyrgyzstan":3,"Lesotho":2,"Zambia":1,"Cuba":4,"Faroe Islands":1,"Northern Mariana Islands":2,"Liberia":1,"Malawi":1,"Papua New Guinea":1,"Bahrain":1,"Palestine State of":2,"Guinea":1,"French Polynesia":2,"Sudan":3,"Martinique":1,"Guyana":1,"Barbados":1,"Honduras":1,"Haiti":3,"Tajikistan":3,"Somalia":1,"Saint Helena Ascension and Tristan da Cunha":1,"Sierra Leone":2,"Swaziland":1,"Gabon":1,"Antigua and Barbuda":1,"Maldives":1},"2021":{"Sweden":423,"China":2121,"United States":7263,"France":996,"Norway":181,"Denmark":168,"Uganda":7,"Romania":107,"Spain":511,"Hong Kong":67,"Viet Nam":121,"Italy":252,"Germany":2279,"Singapore":164,"Switzerland":354,"Nicaragua":265,"Slovakia":38,"Russian Federation":451,"Bosnia and Herzegovina":5,"Malta":13,"Japan":550,"Australia":697,"Egypt":37,"Netherlands":599,"Poland":449,"Taiwan Province of China":143,"Philippines":39,"India":1928,"South Africa":115,"Ireland":65,"Korea Republic of":233,"Thailand":57,"Czech Republic":250,"United Kingdom":1472,"Brazil":476,"Portugal":126,"Canada":751,"Saudi Arabia":8,"Greece":71,"Finland":157,"Estonia":40,"Slovenia":32,"United Arab Emirates":32,"Turkey":147,"Mexico":93,"Argentina":101,"Tunisia":17,"Uruguay":16,"Malaysia":35,"Austria":194,"Algeria":10,"Myanmar":2,"Mauritius":3,"Belgium":198,"Hungary":108,"Bulgaria":73,"Lithuania":41,"Iraq":3,"New Zealand":110,"Iran Islamic Republic of":81,"Ukraine":273,"Kenya":25,"Nepal":11,"Peru":9,"Indonesia":122,"Israel":267,"Latvia":33,"Chile":38,"Paraguay":3,"Pakistan":46,"Benin":1,"Morocco":21,"Croatia":25,"Moldova Republic of":9,"Costa Rica":15,"Colombia":50,"Syrian Arab Republic":5,"Ghana":5,"Nigeria":69,"Jordan":8,"Lebanon":5,"Iceland":16,"Venezuela Bolivarian Republic of":7,"Albania":4,"Cyprus":14,"Cameroon":4,"Bangladesh":42,"Serbia and Montenegro":25,"El Salvador":3,"Luxembourg":14,"Belarus":73,"Antarctica":3,"Saint Lucia":2,"New Caledonia":4,"Tanzania United Republic of":6,"Zimbabwe":1,"Georgia":4,"Sri Lanka":36,"Bolivia Plurinational State of":10,"Andorra":2,"Kazakhstan":10,"Cambodia":8,"Gibraltar":2,"Oman":3,"Jamaica":6,"Rwanda":2,"Dominican Republic":5,"Congo the Democratic Republic of the":2,"Armenia":8,"Ecuador":8,"Senegal":2,"Angola":8,"Macao":2,"Guatemala":7,"Panama":1,"Uzbekistan":7,"Virgin Islands U.S.":1,"Mozambique":1,"Serbia":12,"R\u00e9union":1,"Eritrea":2,"Qatar":2,"Azerbaijan":3,"C\u00f4te Divoire":6,"Madagascar":2,"Macedonia the Former Yugoslav Republic of":6,"Kyrgyzstan":3,"Lesotho":1,"Zambia":3,"Cuba":3,"Faroe Islands":1,"Northern Mariana Islands":1,"Korea Democratic People Republic of":2,"Malawi":2,"Papua New Guinea":1,"Guinea":1,"French Polynesia":4,"Sudan":1,"Burkina Faso":1,"Cura\u00e7ao":1,"Honduras":2,"Haiti":1,"Tajikistan":4,"Gambia":1,"Chad":1,"Antigua and Barbuda":2,"Solomon Islands":1,"Fiji":1},"2022":{"Sweden":396,"China":2046,"United States":6545,"France":1018,"Norway":185,"Denmark":167,"Uganda":5,"Romania":108,"Spain":516,"Hong Kong":53,"Viet Nam":120,"Italy":255,"Germany":2389,"Singapore":132,"Switzerland":393,"Nicaragua":267,"Slovakia":43,"Russian Federation":352,"Bosnia and Herzegovina":5,"Malta":14,"Japan":476,"Australia":665,"Egypt":33,"Netherlands":567,"Poland":463,"Taiwan Province of China":119,"Philippines":38,"India":1920,"South Africa":103,"Ireland":48,"Korea Republic of":219,"Thailand":57,"Czech Republic":259,"United Kingdom":1404,"Brazil":434,"Portugal":135,"Canada":683,"Saudi Arabia":14,"Greece":79,"Finland":131,"Estonia":46,"Slovenia":25,"United Arab Emirates":28,"Turkey":149,"Mexico":80,"Argentina":73,"Tunisia":19,"Uruguay":13,"Malaysia":30,"Austria":225,"Algeria":6,"Myanmar":4,"Mauritius":2,"Belgium":195,"Hungary":114,"Bulgaria":60,"Lithuania":53,"Iraq":1,"New Zealand":105,"Iran Islamic Republic of":56,"Ukraine":194,"Kenya":17,"Nepal":16,"Peru":11,"Indonesia":91,"Israel":267,"Latvia":30,"Chile":41,"Paraguay":4,"Pakistan":57,"Benin":2,"Morocco":16,"Croatia":29,"Moldova Republic of":9,"Costa Rica":14,"Colombia":45,"Syrian Arab Republic":8,"Ghana":2,"Nigeria":68,"Jordan":7,"Lebanon":5,"Iceland":17,"Venezuela Bolivarian Republic of":11,"Albania":4,"Cyprus":13,"Cameroon":3,"Bangladesh":46,"Serbia and Montenegro":31,"El Salvador":3,"Luxembourg":20,"Belarus":61,"Puerto Rico":2,"Antarctica":4,"Saint Lucia":3,"New Caledonia":5,"Tanzania United Republic of":3,"Zimbabwe":1,"Georgia":6,"Sri Lanka":37,"Bolivia Plurinational State of":12,"Andorra":2,"Kazakhstan":17,"Cambodia":2,"Jamaica":3,"Rwanda":4,"Dominican Republic":7,"Congo the Democratic Republic of the":2,"Armenia":11,"Ecuador":4,"Senegal":3,"Ethiopia":3,"Afghanistan":3,"Angola":8,"Guatemala":6,"Panama":1,"Uzbekistan":5,"Virgin Islands U.S.":2,"Mozambique":2,"Serbia":10,"Eritrea":2,"Kuwait":1,"Qatar":1,"Azerbaijan":6,"C\u00f4te Divoire":5,"Madagascar":1,"Macedonia the Former Yugoslav Republic of":8,"Kyrgyzstan":2,"Lesotho":2,"Zambia":3,"Cuba":4,"Faroe Islands":1,"Northern Mariana Islands":1,"Turkmenistan":1,"Bahrain":1,"Palestine State of":1,"Guinea":1,"French Polynesia":2,"Sudan":1,"Burkina Faso":1,"Cura\u00e7ao":1,"Comoros":1,"Honduras":1,"Djibouti":1,"Haiti":1,"Tajikistan":3,"Greenland":1,"Gambia":1,"South Sudan":1,"Somalia":1,"Saint Helena Ascension and Tristan da Cunha":1,"Chad":1,"Montenegro":1},"2023":{"Sweden":291,"China":1528,"United States":5343,"France":914,"Norway":174,"Denmark":156,"Uganda":6,"Romania":98,"Spain":439,"Hong Kong":39,"Viet Nam":99,"Italy":229,"Germany":1974,"Singapore":93,"Switzerland":303,"Nicaragua":210,"Slovakia":35,"Russian Federation":276,"Bosnia and Herzegovina":5,"Malta":5,"Japan":381,"Australia":561,"Egypt":28,"Netherlands":525,"Poland":380,"Taiwan Province of China":89,"Philippines":33,"India":1567,"South Africa":87,"Ireland":42,"Korea Republic of":174,"Thailand":52,"Czech Republic":250,"United Kingdom":1189,"Brazil":360,"Portugal":133,"Canada":543,"Saudi Arabia":7,"Greece":66,"Finland":129,"Estonia":42,"Slovenia":19,"United Arab Emirates":18,"Turkey":116,"Mexico":62,"Argentina":72,"Tunisia":13,"Uruguay":13,"Malaysia":28,"Austria":164,"Algeria":5,"Myanmar":2,"Mauritius":5,"Belgium":150,"Hungary":105,"Bulgaria":48,"Lithuania":55,"Iraq":5,"New Zealand":93,"Iran Islamic Republic of":61,"Ukraine":162,"Kenya":14,"Nepal":16,"Peru":10,"Indonesia":74,"Israel":220,"Latvia":25,"Chile":37,"Paraguay":3,"Pakistan":33,"Benin":1,"Morocco":11,"Croatia":23,"Moldova Republic of":6,"Costa Rica":6,"Colombia":42,"Syrian Arab Republic":4,"Ghana":5,"Nigeria":58,"Jordan":5,"Lebanon":4,"Iceland":15,"Venezuela Bolivarian Republic of":7,"Albania":5,"Cyprus":15,"Cameroon":1,"Bangladesh":37,"Serbia and Montenegro":36,"El Salvador":4,"Luxembourg":18,"Belarus":44,"Antarctica":3,"Saint Lucia":4,"New Caledonia":4,"Zimbabwe":1,"Georgia":5,"Sri Lanka":30,"Bolivia Plurinational State of":9,"Andorra":1,"Kazakhstan":12,"Gibraltar":1,"Jamaica":2,"Rwanda":3,"Dominican Republic":3,"Congo the Democratic Republic of the":1,"Armenia":6,"Ecuador":5,"Senegal":3,"Afghanistan":1,"Angola":7,"Guatemala":4,"Panama":1,"Uzbekistan":4,"Mozambique":1,"Serbia":12,"Eritrea":1,"Azerbaijan":2,"C\u00f4te Divoire":3,"Madagascar":3,"Macedonia the Former Yugoslav Republic of":8,"Kyrgyzstan":2,"Lesotho":2,"Zambia":2,"Cuba":2,"Northern Mariana Islands":1,"Turkmenistan":1,"Papua New Guinea":1,"Palestine State of":1,"Guinea":1,"French Polynesia":2,"Sudan":2,"Burkina Faso":1,"Cura\u00e7ao":2,"Tajikistan":3,"Gambia":1,"Saint Helena Ascension and Tristan da Cunha":2,"Chad":1,"San Marino":1},"2024":{"Sweden":315,"China":1280,"United States":5408,"France":929,"Norway":161,"Denmark":174,"Uganda":5,"Romania":90,"Spain":459,"Hong Kong":34,"Viet Nam":103,"Italy":244,"Germany":1933,"Singapore":95,"Switzerland":299,"Nicaragua":182,"Slovakia":35,"Russian Federation":276,"Bosnia and Herzegovina":6,"Malta":11,"Japan":383,"Australia":564,"Egypt":29,"Netherlands":504,"Poland":386,"Taiwan Province of China":104,"Philippines":33,"India":1418,"South Africa":84,"Ireland":36,"Korea Republic of":171,"Thailand":50,"Czech Republic":237,"United Kingdom":1131,"Brazil":360,"Portugal":146,"Canada":585,"Saudi Arabia":10,"Greece":64,"Finland":129,"Estonia":43,"Slovenia":19,"United Arab Emirates":24,"Turkey":103,"Mexico":54,"Argentina":77,"Tunisia":14,"Uruguay":6,"Malaysia":34,"Austria":188,"Algeria":7,"Myanmar":5,"Mauritius":6,"Belgium":155,"Hungary":89,"Bulgaria":56,"Lithuania":41,"Iraq":4,"New Zealand":82,"Iran Islamic Republic of":71,"Ukraine":185,"Kenya":18,"Nepal":16,"Peru":9,"Indonesia":71,"Israel":190,"Latvia":23,"Chile":36,"Paraguay":2,"Pakistan":43,"Benin":2,"Morocco":12,"Croatia":24,"Moldova Republic of":8,"Costa Rica":10,"Colombia":39,"Syrian Arab Republic":5,"Ghana":5,"Nigeria":69,"Jordan":8,"Lebanon":5,"Iceland":5,"Venezuela Bolivarian Republic of":8,"Albania":3,"Cyprus":18,"Cameroon":7,"Bangladesh":34,"Serbia and Montenegro":30,"El Salvador":1,"Luxembourg":18,"Belarus":38,"Puerto Rico":1,"Antarctica":4,"Saint Lucia":3,"New Caledonia":3,"Tanzania United Republic of":2,"Zimbabwe":1,"Georgia":5,"Sri Lanka":26,"Bolivia Plurinational State of":7,"Andorra":2,"Kazakhstan":23,"Cambodia":2,"Gibraltar":1,"Jamaica":4,"Rwanda":1,"Dominican Republic":3,"Congo the Democratic Republic of the":2,"Armenia":11,"Ecuador":3,"Senegal":4,"Ethiopia":2,"Afghanistan":1,"Liechtenstein":1,"Angola":9,"Guatemala":2,"Panama":2,"Uzbekistan":6,"Serbia":14,"R\u00e9union":1,"Eritrea":1,"Qatar":1,"Belize":1,"Azerbaijan":4,"C\u00f4te Divoire":3,"Madagascar":1,"Macedonia the Former Yugoslav Republic of":2,"Kyrgyzstan":1,"Lesotho":1,"Zambia":1,"Cuba":2,"Faroe Islands":1,"Northern Mariana Islands":1,"Turkmenistan":1,"Papua New Guinea":1,"Bahrain":1,"Saint Kitts and Nevis":1,"Palestine State of":1,"French Polynesia":1,"Cura\u00e7ao":1,"Honduras":2,"Haiti":2,"Tajikistan":2,"Guinea-Bissau":1,"Gambia":1,"Saint Helena Ascension and Tristan da Cunha":1,"Kiribati":1},"2025":{"Sweden":207,"China":828,"United States":3386,"France":593,"Norway":106,"Denmark":109,"Uganda":2,"Romania":55,"Spain":292,"Hong Kong":24,"Viet Nam":62,"Italy":152,"Germany":1297,"Singapore":50,"Switzerland":210,"Nicaragua":123,"Slovakia":21,"Russian Federation":173,"Malta":4,"Japan":271,"Australia":354,"Egypt":13,"Netherlands":310,"Poland":252,"Taiwan Province of China":73,"Philippines":19,"India":786,"South Africa":56,"Ireland":27,"Korea Republic of":98,"Thailand":16,"Czech Republic":174,"United Kingdom":724,"Brazil":186,"Portugal":89,"Canada":372,"Saudi Arabia":4,"Greece":38,"Finland":95,"Estonia":30,"Slovenia":9,"United Arab Emirates":9,"Turkey":52,"Mexico":30,"Argentina":41,"Tunisia":7,"Uruguay":6,"Malaysia":20,"Austria":103,"Algeria":2,"Myanmar":1,"Mauritius":4,"Belgium":118,"Hungary":64,"Bulgaria":31,"Lithuania":27,"Iraq":2,"New Zealand":56,"Iran Islamic Republic of":34,"Ukraine":115,"Kenya":10,"Nepal":4,"Peru":4,"Indonesia":51,"Israel":135,"Latvia":19,"Chile":14,"Pakistan":15,"Benin":2,"Morocco":4,"Croatia":11,"Moldova Republic of":2,"Costa Rica":5,"Colombia":24,"Syrian Arab Republic":2,"Ghana":2,"Nigeria":33,"Jordan":2,"Lebanon":2,"Iceland":6,"Venezuela Bolivarian Republic of":5,"Albania":5,"Cyprus":8,"Cameroon":1,"Bangladesh":20,"Serbia and Montenegro":18,"El Salvador":2,"Luxembourg":10,"Belarus":21,"Antarctica":2,"New Caledonia":3,"Georgia":2,"Sri Lanka":38,"Bolivia Plurinational State of":3,"Andorra":2,"Kazakhstan":4,"Oman":1,"Jamaica":2,"Dominican Republic":2,"Congo the Democratic Republic of the":1,"Armenia":5,"Senegal":2,"Angola":5,"Macao":1,"Guatemala":3,"Panama":2,"Timor-Leste":1,"Mozambique":1,"Serbia":5,"Kuwait":1,"Azerbaijan":1,"C\u00f4te Divoire":2,"Madagascar":1,"Kyrgyzstan":1,"Lesotho":1,"Cuba":2,"Faroe Islands":1,"Northern Mariana Islands":1,"Papua New Guinea":1,"French Polynesia":1,"Sudan":1,"Burkina Faso":2,"Cura\u00e7ao":1,"Haiti":1,"Tajikistan":1,"Saint Helena Ascension and Tristan da Cunha":1},"2026":{"Sweden":78,"China":327,"United States":1305,"France":197,"Norway":30,"Denmark":30,"Romania":19,"Spain":116,"Hong Kong":5,"Viet Nam":10,"Italy":54,"Germany":422,"Singapore":18,"Switzerland":84,"Nicaragua":38,"Slovakia":5,"Russian Federation":46,"Bosnia and Herzegovina":1,"Malta":1,"Japan":103,"Australia":116,"Egypt":9,"Netherlands":103,"Poland":92,"Taiwan Province of China":33,"Philippines":3,"India":298,"South Africa":19,"Ireland":9,"Korea Republic of":26,"Thailand":5,"Czech Republic":79,"United Kingdom":252,"Brazil":65,"Portugal":26,"Canada":142,"Saudi Arabia":1,"Greece":15,"Finland":37,"Estonia":10,"Slovenia":4,"United Arab Emirates":2,"Turkey":22,"Mexico":10,"Argentina":16,"Tunisia":4,"Uruguay":3,"Malaysia":6,"Austria":34,"Mauritius":2,"Belgium":29,"Hungary":20,"Bulgaria":10,"Lithuania":8,"New Zealand":19,"Iran Islamic Republic of":9,"Ukraine":31,"Kenya":2,"Nepal":4,"Indonesia":12,"Israel":59,"Latvia":7,"Chile":5,"Pakistan":9,"Benin":1,"Morocco":1,"Croatia":2,"Moldova Republic of":3,"Costa Rica":3,"Colombia":7,"Syrian Arab Republic":2,"Ghana":1,"Nigeria":6,"Iceland":1,"Albania":2,"Cyprus":1,"Cameroon":3,"Bangladesh":12,"Serbia and Montenegro":4,"Luxembourg":3,"Belarus":7,"Antarctica":1,"Georgia":2,"Sri Lanka":19,"Bolivia Plurinational State of":2,"Andorra":1,"Kazakhstan":1,"Jamaica":3,"Dominican Republic":1,"Armenia":1,"Ecuador":1,"Senegal":1,"Guatemala":1,"Panama":2,"Serbia":5,"C\u00f4te Divoire":1,"Madagascar":1,"Northern Mariana Islands":1,"Haiti":1,"Tajikistan":1}},"cumulative":{"United States":25127,"Germany":7209,"India":7090,"China":6503,"United Kingdom":5344,"France":3618,"Australia":2609,"Canada":2457,"Netherlands":2175,"Japan":1967,"Brazil":1675,"Spain":1664,"Russian Federation":1531,"Poland":1474,"Sweden":1345,"Switzerland":1133,"Nicaragua":904,"Italy":898,"Ukraine":889,"Korea Republic of":867,"Israel":823,"Czech Republic":811,"Belgium":687,"Norway":687,"Austria":668,"Denmark":631,"Finland":551,"Singapore":538,"Turkey":537,"Indonesia":497,"Taiwan Province of China":494,"Portugal":481,"Viet Nam":443,"South Africa":441,"Romania":417,"New Zealand":417,"Hungary":411,"Argentina":380,"Mexico":314,"Nigeria":314,"Iran Islamic Republic of":285,"Thailand":281,"Belarus":267,"Greece":260,"Pakistan":255,"Bulgaria":250,"Hong Kong":239,"Philippines":214,"Colombia":197,"Bangladesh":191,"Sri Lanka":187,"Ireland":185,"Lithuania":177,"Chile":170,"Malaysia":158,"Estonia":153,"Egypt":145,"Slovakia":139,"United Arab Emirates":131,"Serbia and Montenegro":118,"Croatia":113,"Kenya":109,"Latvia":108,"Slovenia":96,"Tunisia":88,"Kazakhstan":72,"Morocco":70,"Nepal":67,"Iceland":65,"Cyprus":62,"Luxembourg":55,"Uruguay":52,"Peru":52,"Algeria":50,"Costa Rica":50,"Venezuela Bolivarian Republic of":48,"Armenia":45,"Saudi Arabia":40,"Moldova Republic of":38,"Serbia":36,"Malta":33,"Ecuador":31,"Dominican Republic":31,"Bolivia Plurinational State of":30,"Angola":30,"Jordan":28,"Uganda":28,"Azerbaijan":28,"Bosnia and Herzegovina":27,"Georgia":26,"Lebanon":26,"Cameroon":26,"Mauritius":24,"Uzbekistan":23,"Syrian Arab Republic":22,"Guatemala":22,"Myanmar":21,"Macedonia the Former Yugoslav Republic of":21,"Ghana":20,"Senegal":20,"C\u00f4te Divoire":19,"Albania":18,"Cambodia":18,"Jamaica":16,"Tanzania United Republic of":15,"Kyrgyzstan":14,"El Salvador":13,"Cuba":13,"Paraguay":12,"Iraq":12,"Rwanda":12,"Antarctica":11,"Ethiopia":11,"Zimbabwe":10,"Saint Lucia":9,"Benin":9,"Andorra":9,"Puerto Rico":9,"Mozambique":9,"Zambia":9,"New Caledonia":8,"Congo the Democratic Republic of the":8,"R\u00e9union":8,"Madagascar":8,"Afghanistan":7,"Eritrea":7,"Palestine State of":7,"Sudan":7,"Tajikistan":7,"Macao":6,"Oman":6,"Qatar":6,"Honduras":6,"Panama":5,"Gibraltar":5,"Kuwait":4,"Papua New Guinea":4,"French Polynesia":4,"Haiti":4,"Virgin Islands U.S.":3,"Mali":3,"Togo":3,"Turkmenistan":3,"Malawi":3,"Bahrain":3,"Cura\u00e7ao":3,"Burkina Faso":3,"Sierra Leone":3,"Liechtenstein":2,"Timor-Leste":2,"Niger":2,"Bermuda":2,"Lesotho":2,"Korea Democratic People Republic of":2,"Faroe Islands":2,"Liberia":2,"Guinea":2,"Northern Mariana Islands":2,"Trinidad and Tobago":2,"Martinique":2,"Guyana":2,"Barbados":2,"Gambia":2,"Greenland":2,"South Sudan":2,"Saint Helena Ascension and Tristan da Cunha":2,"Antigua and Barbuda":2,"Botswana":1,"Bhutan":1,"Belize":1,"Cayman Islands":1,"Saint Kitts and Nevis":1,"Lao People Democratic Republic":1,"Saint Vincent and the Grenadines":1,"Cape Verde":1,"Comoros":1,"Guinea-Bissau":1,"Nauru":1,"Djibouti":1,"Mauritania":1,"Somalia":1,"Chad":1,"Gabon":1,"Swaziland":1,"Maldives":1,"Montenegro":1,"Solomon Islands":1,"Fiji":1,"San Marino":1,"Kiribati":1}},"commits":{"yearly":{"2014":{"Sweden":41,"China":368,"United States":12698,"France":87,"Norway":105,"Denmark":6,"Romania":13,"Spain":23,"Italy":96,"Germany":878,"Switzerland":24,"Nicaragua":2,"Slovakia":98,"Russian Federation":1,"Bosnia and Herzegovina":16,"Japan":990,"Australia":58,"Netherlands":33,"Poland":37,"Taiwan Province of China":7,"Philippines":10,"India":37,"South Africa":2,"Korea Republic of":6,"Thailand":1,"Czech Republic":560,"United Kingdom":77,"Brazil":23,"Portugal":11,"Canada":28,"Greece":3,"Finland":11,"United Arab Emirates":5,"Turkey":36,"Mexico":1,"Malaysia":1,"Austria":11,"Algeria":1,"Hungary":6},"2015":{"China":11,"United States":11123,"France":49,"Germany":3808,"Russian Federation":20,"Japan":844,"Australia":2,"Poland":1194,"Ireland":488,"Czech Republic":239,"United Kingdom":185,"Brazil":26,"Portugal":241,"Mexico":1,"Austria":17},"2016":{"Sweden":64,"China":672,"United States":16115,"France":268,"Italy":173,"Germany":3063,"Switzerland":183,"Nicaragua":1320,"Russian Federation":1360,"Japan":1493,"Australia":105,"Netherlands":47,"Poland":1933,"India":674,"Ireland":571,"Thailand":3,"Czech Republic":374,"United Kingdom":1398,"Brazil":80,"Portugal":766,"Canada":54,"Finland":121,"Austria":38,"Indonesia":107,"Israel":1,"Chile":21,"Benin":12,"Moldova Republic of":1,"Tanzania United Republic of":61},"2017":{"Sweden":107,"China":2477,"United States":32184,"France":324,"Norway":68,"Spain":334,"Hong Kong":5,"Italy":344,"Germany":4795,"Switzerland":1941,"Nicaragua":2261,"Russian Federation":1573,"Japan":1604,"Australia":208,"Netherlands":23,"Poland":2950,"India":1948,"South Africa":16,"Ireland":866,"Thailand":10,"Czech Republic":291,"United Kingdom":3566,"Brazil":85,"Portugal":112,"Canada":1141,"Finland":47,"Slovenia":2,"Mexico":158,"Argentina":5,"Austria":11,"New Zealand":469,"Indonesia":316,"Israel":5,"Chile":743,"Benin":469,"Antarctica":2,"Tanzania United Republic of":199},"2018":{"Sweden":30,"China":1872,"United States":36068,"France":438,"Norway":103,"Denmark":126,"Romania":130,"Spain":517,"Italy":232,"Germany":5822,"Switzerland":1855,"Nicaragua":661,"Russian Federation":1606,"Japan":964,"Australia":753,"Netherlands":63,"Poland":4645,"India":3136,"South Africa":11,"Ireland":760,"Korea Republic of":11,"Thailand":3,"Czech Republic":2088,"United Kingdom":2988,"Brazil":164,"Portugal":660,"Canada":1584,"Greece":4,"Finland":10,"Mexico":40,"Austria":104,"Hungary":493,"Bulgaria":1,"New Zealand":69,"Ukraine":57,"Indonesia":180,"Israel":327,"Latvia":65,"Chile":316,"Benin":88,"Tanzania United Republic of":138,"Armenia":5,"Serbia":12,"Northern Mariana Islands":9},"2019":{"Sweden":66,"China":3376,"United States":51220,"France":475,"Norway":1,"Denmark":11,"Romania":511,"Spain":1845,"Hong Kong":67,"Viet Nam":2,"Italy":488,"Germany":8130,"Singapore":11,"Switzerland":1531,"Nicaragua":736,"Slovakia":7,"Russian Federation":2328,"Malta":35,"Japan":1048,"Australia":886,"Netherlands":1510,"Poland":5324,"Taiwan Province of China":18,"Philippines":100,"India":4017,"South Africa":46,"Ireland":696,"Korea Republic of":47,"Thailand":63,"Czech Republic":4275,"United Kingdom":4880,"Brazil":355,"Portugal":1806,"Canada":1907,"Greece":3,"Finland":32,"Estonia":3,"Turkey":2,"Mexico":469,"Austria":2228,"Belgium":42,"Hungary":1446,"Lithuania":126,"New Zealand":525,"Iran Islamic Republic of":7,"Ukraine":97,"Indonesia":998,"Israel":375,"Latvia":1,"Chile":120,"Benin":85,"Morocco":14,"Colombia":526,"Belarus":5,"Antarctica":1,"Tanzania United Republic of":150,"Serbia":2,"Northern Mariana Islands":20},"2020":{"Sweden":4785,"China":7223,"United States":73152,"France":2104,"Norway":35,"Denmark":238,"Romania":1837,"Spain":3612,"Hong Kong":143,"Viet Nam":1,"Italy":1343,"Germany":9485,"Singapore":6,"Switzerland":2741,"Nicaragua":1157,"Slovakia":143,"Russian Federation":3975,"Bosnia and Herzegovina":32,"Malta":627,"Japan":1993,"Australia":987,"Egypt":3,"Netherlands":2605,"Poland":4075,"Taiwan Province of China":529,"Philippines":59,"India":7004,"South Africa":127,"Ireland":563,"Korea Republic of":59,"Thailand":379,"Czech Republic":4299,"United Kingdom":7554,"Brazil":222,"Portugal":1637,"Canada":1998,"Finland":145,"Estonia":48,"Turkey":357,"Mexico":158,"Argentina":10,"Austria":4165,"Mauritius":1,"Belgium":658,"Hungary":1187,"Bulgaria":16,"Lithuania":167,"New Zealand":585,"Iran Islamic Republic of":95,"Ukraine":131,"Indonesia":143,"Israel":716,"Chile":864,"Benin":65,"Morocco":5,"Colombia":493,"Syrian Arab Republic":303,"Bangladesh":1,"Belarus":94,"Antarctica":1,"Tanzania United Republic of":209,"Angola":93,"Serbia":4,"Northern Mariana Islands":27},"2021":{"Sweden":6433,"China":12914,"United States":66917,"France":2855,"Norway":193,"Denmark":159,"Romania":1835,"Spain":4188,"Hong Kong":34,"Italy":925,"Germany":8656,"Singapore":5,"Switzerland":2803,"Nicaragua":1335,"Slovakia":11,"Russian Federation":3827,"Bosnia and Herzegovina":45,"Malta":579,"Japan":4569,"Australia":1019,"Egypt":83,"Netherlands":2385,"Poland":3274,"Taiwan Province of China":2556,"Philippines":84,"India":6494,"South Africa":239,"Ireland":77,"Korea Republic of":326,"Thailand":704,"Czech Republic":4120,"United Kingdom":8943,"Brazil":518,"Portugal":1646,"Canada":2204,"Greece":17,"Finland":783,"Estonia":36,"Turkey":518,"Mexico":747,"Argentina":12,"Austria":6149,"Belgium":1182,"Hungary":573,"Bulgaria":45,"Lithuania":238,"New Zealand":193,"Iran Islamic Republic of":51,"Ukraine":439,"Peru":84,"Indonesia":36,"Israel":1024,"Latvia":1,"Chile":159,"Benin":7,"Costa Rica":68,"Colombia":656,"Syrian Arab Republic":390,"Nigeria":2,"Iceland":9,"Albania":1,"Bangladesh":7,"Belarus":2,"Antarctica":1,"New Caledonia":102,"Tanzania United Republic of":212,"Senegal":1,"Angola":100,"Serbia":1,"Northern Mariana Islands":2},"2022":{"Sweden":7024,"China":20129,"United States":65357,"France":2855,"Norway":747,"Denmark":17,"Romania":1933,"Spain":3648,"Hong Kong":48,"Italy":3274,"Germany":13715,"Switzerland":2511,"Nicaragua":1227,"Russian Federation":2700,"Malta":285,"Japan":4626,"Australia":2044,"Egypt":40,"Netherlands":2507,"Poland":4957,"Taiwan Province of China":3595,"Philippines":2,"India":7507,"South Africa":121,"Ireland":170,"Korea Republic of":769,"Thailand":660,"Czech Republic":2997,"United Kingdom":8323,"Brazil":419,"Portugal":903,"Canada":4754,"Saudi Arabia":1,"Greece":50,"Finland":551,"Estonia":977,"Turkey":252,"Mexico":219,"Argentina":28,"Uruguay":74,"Austria":5049,"Belgium":1368,"Hungary":329,"Bulgaria":40,"Lithuania":288,"New Zealand":310,"Iran Islamic Republic of":13,"Ukraine":176,"Nepal":41,"Peru":8,"Indonesia":2,"Israel":1279,"Chile":272,"Benin":38,"Morocco":8,"Costa Rica":179,"Colombia":820,"Syrian Arab Republic":34,"Nigeria":30,"Iceland":14,"Albania":1,"Bangladesh":49,"Serbia and Montenegro":15,"Antarctica":1,"New Caledonia":16,"Tanzania United Republic of":47,"Bolivia Plurinational State of":7,"Dominican Republic":60,"Senegal":334,"Angola":49,"Guatemala":4,"Serbia":28,"Lesotho":3},"2023":{"Sweden":5486,"China":18509,"United States":65525,"France":4097,"Norway":884,"Denmark":64,"Uganda":11,"Romania":1360,"Spain":5507,"Hong Kong":196,"Italy":4754,"Germany":19041,"Singapore":100,"Switzerland":3391,"Nicaragua":697,"Slovakia":355,"Russian Federation":1643,"Malta":305,"Japan":3412,"Australia":1709,"Egypt":205,"Netherlands":5154,"Poland":6902,"Taiwan Province of China":3873,"Philippines":18,"India":8604,"South Africa":102,"Ireland":346,"Korea Republic of":302,"Thailand":743,"Czech Republic":3063,"United Kingdom":9400,"Brazil":464,"Portugal":785,"Canada":4827,"Greece":214,"Finland":1416,"Estonia":27,"Turkey":521,"Mexico":138,"Argentina":66,"Uruguay":112,"Austria":2178,"Belgium":792,"Hungary":2831,"Bulgaria":74,"Lithuania":418,"New Zealand":172,"Iran Islamic Republic of":2,"Ukraine":230,"Nepal":137,"Peru":8,"Indonesia":11,"Israel":2933,"Latvia":3,"Chile":223,"Pakistan":5,"Benin":58,"Morocco":21,"Costa Rica":196,"Colombia":1303,"Nigeria":76,"Iceland":71,"Albania":10,"Bangladesh":247,"Serbia and Montenegro":32,"Luxembourg":7,"New Caledonia":6,"Bolivia Plurinational State of":155,"Senegal":39,"Angola":48,"Serbia":56,"Northern Mariana Islands":42},"2024":{"Sweden":7778,"China":14343,"United States":59706,"France":5792,"Norway":314,"Denmark":431,"Romania":1537,"Spain":7315,"Hong Kong":137,"Viet Nam":4,"Italy":6173,"Germany":25706,"Singapore":198,"Switzerland":4090,"Nicaragua":1006,"Slovakia":757,"Russian Federation":1234,"Malta":365,"Japan":3488,"Australia":2884,"Egypt":202,"Netherlands":2135,"Poland":7057,"Taiwan Province of China":5634,"Philippines":2,"India":6599,"South Africa":615,"Ireland":479,"Korea Republic of":142,"Thailand":803,"Czech Republic":5003,"United Kingdom":11187,"Brazil":937,"Portugal":837,"Canada":4913,"Greece":330,"Finland":1535,"Estonia":2,"Turkey":409,"Mexico":186,"Argentina":402,"Tunisia":3,"Uruguay":213,"Austria":1782,"Belgium":781,"Hungary":1925,"Bulgaria":73,"Lithuania":280,"New Zealand":436,"Ukraine":492,"Nepal":3,"Indonesia":15,"Israel":1670,"Latvia":3,"Chile":699,"Benin":33,"Morocco":14,"Croatia":155,"Costa Rica":372,"Colombia":1079,"Syrian Arab Republic":2,"Nigeria":118,"Iceland":126,"Bangladesh":389,"Serbia and Montenegro":561,"Luxembourg":22,"New Caledonia":2,"Georgia":57,"Bolivia Plurinational State of":59,"Dominican Republic":104,"Senegal":3,"Angola":2,"Serbia":102,"Lesotho":154,"Northern Mariana Islands":177},"2025":{"Sweden":3370,"China":7736,"United States":41939,"France":7415,"Norway":145,"Denmark":728,"Romania":1682,"Spain":4795,"Hong Kong":28,"Viet Nam":8,"Italy":5353,"Germany":16645,"Singapore":52,"Switzerland":3299,"Nicaragua":867,"Slovakia":517,"Russian Federation":1059,"Malta":278,"Japan":2976,"Australia":2441,"Egypt":205,"Netherlands":1345,"Poland":4460,"Taiwan Province of China":2900,"Philippines":1,"India":3927,"South Africa":191,"Ireland":146,"Korea Republic of":46,"Thailand":313,"Czech Republic":3555,"United Kingdom":9437,"Brazil":754,"Portugal":1016,"Canada":3085,"Greece":273,"Finland":704,"Turkey":303,"Mexico":160,"Argentina":476,"Tunisia":5,"Uruguay":457,"Austria":992,"Belgium":269,"Hungary":1679,"Bulgaria":16,"Lithuania":160,"New Zealand":217,"Iran Islamic Republic of":51,"Ukraine":547,"Indonesia":70,"Israel":1324,"Latvia":2,"Chile":80,"Pakistan":22,"Benin":25,"Morocco":10,"Croatia":174,"Costa Rica":67,"Colombia":585,"Syrian Arab Republic":1,"Nigeria":102,"Iceland":81,"Albania":17,"Bangladesh":104,"Serbia and Montenegro":23,"Georgia":235,"Sri Lanka":557,"Dominican Republic":47,"Senegal":6,"Serbia":180,"Lesotho":9,"Northern Mariana Islands":60},"2026":{"Sweden":1374,"China":2354,"United States":18890,"France":1980,"Norway":29,"Denmark":188,"Romania":522,"Spain":1554,"Hong Kong":1,"Italy":1702,"Germany":4243,"Switzerland":910,"Nicaragua":507,"Slovakia":158,"Russian Federation":695,"Malta":47,"Japan":881,"Australia":750,"Egypt":72,"Netherlands":540,"Poland":1398,"Taiwan Province of China":971,"India":1063,"South Africa":71,"Ireland":71,"Korea Republic of":2,"Thailand":52,"Czech Republic":1541,"United Kingdom":3001,"Brazil":337,"Portugal":173,"Canada":1370,"Greece":49,"Finland":320,"Turkey":138,"Mexico":144,"Argentina":45,"Tunisia":6,"Uruguay":97,"Malaysia":5,"Austria":195,"Belgium":150,"Hungary":305,"Bulgaria":17,"Lithuania":56,"New Zealand":21,"Ukraine":79,"Indonesia":15,"Israel":1140,"Chile":11,"Pakistan":1,"Benin":12,"Morocco":2,"Costa Rica":58,"Colombia":273,"Nigeria":11,"Iceland":49,"Bangladesh":46,"Serbia and Montenegro":104,"Georgia":34,"Sri Lanka":608,"Dominican Republic":23,"Serbia":29,"Northern Mariana Islands":7}},"cumulative":{"United States":561171,"Germany":120916,"China":93049,"United Kingdom":71533,"India":49909,"Poland":46667,"Sweden":35447,"Czech Republic":33755,"Spain":33389,"Japan":29313,"France":28375,"Canada":28158,"Switzerland":25885,"Italy":24442,"Austria":22639,"Russian Federation":21131,"Taiwan Province of China":20417,"Netherlands":18684,"Australia":13965,"Nicaragua":12081,"Romania":11332,"Israel":11008,"Hungary":10586,"Portugal":10194,"Finland":5836,"Colombia":5760,"Ireland":5322,"Belgium":5307,"Brazil":4365,"Thailand":3745,"Chile":3538,"New Zealand":3058,"Turkey":2627,"Norway":2612,"Malta":2480,"Mexico":2379,"Ukraine":2243,"Slovakia":2025,"Denmark":1948,"Indonesia":1923,"Korea Republic of":1744,"Lithuania":1707,"South Africa":1516,"Sri Lanka":1168,"Estonia":1093,"Argentina":1078,"Tanzania United Republic of":1014,"Uruguay":945,"Costa Rica":943,"Greece":936,"Benin":875,"Bangladesh":841,"Egypt":828,"Syrian Arab Republic":740,"Serbia and Montenegro":736,"Hong Kong":675,"Serbia":413,"Senegal":380,"Singapore":371,"Iceland":355,"Northern Mariana Islands":346,"Nigeria":340,"Georgia":327,"Croatia":326,"Angola":291,"Bulgaria":279,"Philippines":277,"Dominican Republic":226,"Bolivia Plurinational State of":218,"Iran Islamic Republic of":214,"Nepal":182,"Lesotho":164,"New Caledonia":126,"Belarus":101,"Peru":100,"Bosnia and Herzegovina":93,"Latvia":75,"Morocco":74,"Luxembourg":29,"Albania":29,"Pakistan":28,"Viet Nam":15,"Tunisia":14,"Uganda":11,"Malaysia":9,"Antarctica":6,"United Arab Emirates":5,"Armenia":5,"Guatemala":4,"Slovenia":2,"Mauritius":1,"Saudi Arabia":1,"Moldova Republic of":1,"Algeria":1}}}; // END COUNTRIES_DATA
+
 let countriesData = null;
 
-// ISO country name -> region mapping (same as used in the SQL analysis)
-const COUNTRY_REGIONS = {
-  'Germany':'Europe','United Kingdom':'Europe','France':'Europe','Netherlands':'Europe','Spain':'Europe','Poland':'Europe','Sweden':'Europe','Switzerland':'Europe','Czech Republic':'Europe','Italy':'Europe','Russian Federation':'Europe','Finland':'Europe','Austria':'Europe','Ukraine':'Europe','Norway':'Europe','Denmark':'Europe','Belgium':'Europe','Portugal':'Europe','Turkey':'Europe','Ireland':'Europe','Romania':'Europe','Greece':'Europe','Hungary':'Europe','Bulgaria':'Europe','Croatia':'Europe','Slovakia':'Europe','Slovenia':'Europe','Lithuania':'Europe','Latvia':'Europe','Estonia':'Europe','Iceland':'Europe','Serbia':'Europe','Malta':'Europe','Luxembourg':'Europe','Cyprus':'Europe','Belarus':'Europe','Moldova Republic of':'Europe','Albania':'Europe','Bosnia and Herzegovina':'Europe','Montenegro':'Europe','Andorra':'Europe','Liechtenstein':'Europe','Faroe Islands':'Europe','Gibraltar':'Europe','Isle of Man':'Europe','Guernsey':'Europe','San Marino':'Europe','Serbia and Montenegro':'Europe','Macedonia the Former Yugoslav Republic of':'Europe',
-  'China':'Asia','India':'Asia','Japan':'Asia','Korea Republic of':'Asia','Singapore':'Asia','Israel':'Asia','Taiwan Province of China':'Asia','Hong Kong':'Asia','Indonesia':'Asia','Viet Nam':'Asia','Thailand':'Asia','Malaysia':'Asia','Philippines':'Asia','Pakistan':'Asia','Bangladesh':'Asia','Sri Lanka':'Asia','Iran Islamic Republic of':'Asia','Saudi Arabia':'Asia','United Arab Emirates':'Asia','Kazakhstan':'Asia','Uzbekistan':'Asia','Iraq':'Asia','Jordan':'Asia','Lebanon':'Asia','Syrian Arab Republic':'Asia','Nepal':'Asia','Myanmar':'Asia','Cambodia':'Asia','Mongolia':'Asia','Oman':'Asia','Kuwait':'Asia','Bahrain':'Asia','Qatar':'Asia','Azerbaijan':'Asia','Georgia':'Asia','Armenia':'Asia','Kyrgyzstan':'Asia','Tajikistan':'Asia','Turkmenistan':'Asia','Afghanistan':'Asia','Korea Democratic People Republic of':'Asia','Lao People Democratic Republic':'Asia','Maldives':'Asia','Macao':'Asia','Timor-Leste':'Asia','Brunei Darussalam':'Asia',
-  'United States':'North America','Canada':'North America','Mexico':'North America','Puerto Rico':'North America','Costa Rica':'North America','Nicaragua':'North America','Guatemala':'North America','Dominican Republic':'North America','Jamaica':'North America','Panama':'North America','El Salvador':'North America','Honduras':'North America','Trinidad and Tobago':'North America','Bermuda':'North America','Cayman Islands':'North America','Aruba':'North America','Curaçao':'North America','Virgin Islands U.S.':'North America','Virgin Islands British':'North America','Bahamas':'North America','Barbados':'North America','Saint Lucia':'North America','Saint Vincent and the Grenadines':'North America','Antigua and Barbuda':'North America','Saint Kitts and Nevis':'North America','Belize':'North America',
-  'Brazil':'South America','Argentina':'South America','Chile':'South America','Colombia':'South America','Peru':'South America','Uruguay':'South America','Paraguay':'South America','Ecuador':'South America','Bolivia Plurinational State of':'South America','Venezuela Bolivarian Republic of':'South America','Guyana':'South America','Suriname':'South America',
-  'Australia':'Oceania','New Zealand':'Oceania','French Polynesia':'Oceania','New Caledonia':'Oceania','Fiji':'Oceania','Samoa':'Oceania','Vanuatu':'Oceania','Solomon Islands':'Oceania','Kiribati':'Oceania','Papua New Guinea':'Oceania',
-  'South Africa':'Africa','Nigeria':'Africa','Kenya':'Africa','Egypt':'Africa','Ghana':'Africa','Uganda':'Africa','Tanzania United Republic of':'Africa','Morocco':'Africa','Tunisia':'Africa','Algeria':'Africa','Senegal':'Africa','Cameroon':'Africa','Ethiopia':'Africa','Mauritius':'Africa','Rwanda':'Africa','Zimbabwe':'Africa','Benin':'Africa','Congo the Democratic Republic of':'Africa','Madagascar':'Africa','Mozambique':'Africa','Angola':'Africa','Zambia':'Africa','Malawi':'Africa','Botswana':'Africa','Lesotho':'Africa','Namibia':'Africa','Libya':'Africa','Sudan':'Africa','South Sudan':'Africa','Somalia':'Africa','Eritrea':'Africa','Mali':'Africa','Burkina Faso':'Africa','Niger':'Africa','Chad':'Africa','Guinea':'Africa','Guinea-Bissau':'Africa','Sierra Leone':'Africa','Liberia':'Africa','Togo':'Africa','Gambia':'Africa','Mauritania':'Africa','Cape Verde':'Africa','Comoros':'Africa','Djibouti':'Africa','Swaziland':'Africa','Gabon':'Africa','Congo':'Africa','Central African Republic':'Africa','Equatorial Guinea':'Africa',
-};
-
-const REGION_ORDER = ['Europe','North America','Asia','Oceania','South America','Africa','Other'];
-const REGION_FLAGS = {'Europe':'🇪🇺','North America':'🌎','Asia':'🌏','Oceania':'🌏','South America':'🌎','Africa':'🌍','Other':'🏳️'};
-
-async function grafanaQuery(sql) {
-  const resp = await fetch(GRAFANA_API, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({queries: [{refId: 'A', datasourceId: 1, format: 'table', rawSql: sql}]})
-  });
-  return resp.json();
-}
-
-async function loadCountries() {
-  const view = document.getElementById('ct-view').value;
+function loadCountries() {
   const metric = document.getElementById('ct-metric').value;
-  const metricSuffix = metric === 'commits' ? 'commits' : 'contributors';
-  const seriesName = `countriesall${metricSuffix}`;
-  const seriesCumName = `countriescumall${metricSuffix}`;
+  const metricKey = metric === 'commits' ? 'commits' : 'contributors';
+  const src = COUNTRIES_DATA[metricKey];
 
-  const loading = document.getElementById('countries-loading');
-  const stats = document.getElementById('countries-stats');
-  const table = document.getElementById('countries-table');
-  const grouped = document.getElementById('countries-grouped');
-  loading.style.display = '';
-  stats.innerHTML = '';
-  table.innerHTML = '';
-  grouped.innerHTML = '';
-
-  try {
-    // Fetch yearly data
-    const yearlyData = await grafanaQuery(
-      `SELECT * FROM scountries WHERE series = '${seriesName}' AND period = 'y' ORDER BY time`
-    );
-
-    const frames = yearlyData.results.A.frames;
-    if (!frames || !frames.length) throw new Error('No data returned');
-
-    const schema = frames[0].schema.fields;
-    const values = frames[0].data.values;
-
-    // Parse: each row is a time slice, countries are columns
-    const timeVals = values[0]; // timestamps
-    const years = [...new Set(timeVals.map(t => new Date(t).getUTCFullYear()))];
-
-    // Build year -> country -> value
-    const yearCountryData = {};
-    const allCountries = new Set();
-    for (let i = 3; i < schema.length; i++) {
-      const name = schema[i].name;
-      allCountries.add(name);
-      for (let j = 0; j < values[i].length; j++) {
-        const v = values[i][j];
-        const year = new Date(timeVals[j]).getUTCFullYear();
-        if (!yearCountryData[year]) yearCountryData[year] = {};
-        if (v !== null && v > 0) yearCountryData[year][name] = v;
-      }
-    }
-
-    // Also fetch cumulative data
-    const cumData = await grafanaQuery(
-      `SELECT * FROM scountriescum WHERE series = '${seriesCumName}' AND period = 'm' ORDER BY time DESC LIMIT 1`
-    );
-    const cumFrames = cumData.results.A.frames;
-    let cumTotal = 0;
-    const cumByCountry = {};
-    const cumByRegion = {};
-    if (cumFrames && cumFrames.length) {
-      const cumSchema = cumFrames[0].schema.fields;
-      const cumValues = cumFrames[0].data.values;
-      for (let i = 3; i < cumSchema.length; i++) {
-        const name = cumSchema[i].name;
-        for (let j = 0; j < cumValues[i].length; j++) {
-          const v = cumValues[i][j];
-          if (v !== null && v > 0) {
-            cumByCountry[name] = (cumByCountry[name] || 0) + v;
-            cumTotal += v;
-          }
-        }
-      }
-    }
-
-    // Group by region
-    const regionData = {};
-    REGION_ORDER.forEach(r => regionData[r] = {});
-    for (const [country, val] of Object.entries(cumByCountry)) {
-      const region = COUNTRY_REGIONS[country] || 'Other';
-      if (!regionData[region]) regionData[region] = {};
-      regionData[region][country] = val;
-    }
-
-    countriesData = { yearCountryData, cumByCountry, cumTotal, cumByRegion: regionData, allCountries, years };
-    loading.style.display = 'none';
-
-    // Render based on view
-    if (view === 'region') renderRegionTable();
-    else if (view === 'top20') renderTop20Table();
-    else if (view === 'trend') renderTrendTable();
-
-  } catch(e) {
-    loading.style.display = 'none';
-    table.innerHTML = `<div class="error">Error loading country data: ${esc(e.message)}</div>`;
+  const yearCountryData = {};
+  for (const [year, countries] of Object.entries(src.yearly)) {
+    yearCountryData[year] = countries;
   }
+
+  const cumByCountry = src.cumulative;
+  const cumTotal = Object.values(cumByCountry).reduce((s, v) => s + v, 0);
+  const allCountries = new Set();
+  for (const yearData of Object.values(yearCountryData)) {
+    for (const c of Object.keys(yearData)) allCountries.add(c);
+  }
+  const years = Object.keys(yearCountryData).map(Number).sort();
+
+  // Group cumulative by region
+  const cumByRegion = {};
+  REGION_ORDER.forEach(r => cumByRegion[r] = {});
+  for (const [country, val] of Object.entries(cumByCountry)) {
+    const region = COUNTRY_REGIONS[country] || 'Other';
+    if (!cumByRegion[region]) cumByRegion[region] = {};
+    cumByRegion[region][country] = val;
+  }
+
+  countriesData = { yearCountryData, cumByCountry, cumTotal, cumByRegion, allCountries, years };
+
+  // Show last updated
+  const updatedEl = document.getElementById('countries-updated');
+  const ts = new Date(COUNTRIES_DATA.lastUpdated);
+  updatedEl.innerHTML = '📅 Data last updated: ' + ts.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'}) +
+    ' · <span style="cursor:pointer;color:var(--accent)" title="Data is refreshed server-side with country-data-refresh.sh" onclick="alert(\'To refresh data, run ./country-data-refresh.sh on the server.\\nThis fetches live data from DevStats and updates this file.\')">ℹ️ How to refresh</span>';
+
+  renderCountriesView();
 }
 
-function renderRegionTable() {
+function renderCountriesView() {
+  if (!countriesData) loadCountries();
   if (!countriesData) return;
-  const { cumByCountry, cumTotal, cumByRegion, yearCountryData } = countriesData;
-
-  const latestYear = Math.max(...Object.keys(yearCountryData).map(Number));
-  const y2024 = yearCountryData[2024] || {};
-  const y2025 = yearCountryData[2025] || {};
-  const total2024 = Object.values(y2024).reduce((s,v) => s + v, 0);
-  const total2025 = Object.values(y2025).reduce((s,v) => s + v, 0);
-
-  // Compute region totals for key years
-  function regionTotal(yearData) {
-    const r = {};
-    for (const [c, v] of Object.entries(yearData)) {
-      const reg = COUNTRY_REGIONS[c] || 'Other';
-      r[reg] = (r[reg] || 0) + v;
-    }
-    return r;
+  const view = document.getElementById('ct-view').value;
+  // Re-load data if metric changed
+  const metric = document.getElementById('ct-metric').value;
+  const metricKey = metric === 'commits' ? 'commits' : 'contributors';
+  const src = COUNTRIES_DATA[metricKey];
+  const yearCountryData = {};
+  for (const [year, countries] of Object.entries(src.yearly)) {
+    yearCountryData[year] = countries;
   }
-  const r2022 = regionTotal(yearCountryData[2022] || {});
-  const r2024 = regionTotal(y2024);
-  const r2025 = regionTotal(y2025);
-
-  const total2022 = Object.values(yearCountryData[2022] || {}).reduce((s,v) => s + v, 0);
-
-  let html = '<table><thead><tr><th>Region</th><th class="contrib-col">2022</th><th class="contrib-col">2024</th><th class="contrib-col">2025</th><th class="contrib-col">All-time</th><th class="contrib-col">Share 2025</th></tr></thead><tbody>';
-
-  for (const region of REGION_ORDER) {
-    const v22 = r2022[region] || 0;
-    const v24 = r2024[region] || 0;
-    const v25 = r2025[region] || 0;
-    const cum = Object.values(cumByRegion[region] || {}).reduce((s,v) => s + v, 0);
-    const pct25 = total2025 > 0 ? (v25 / total2025 * 100).toFixed(1) : '—';
-    html += `<tr style="cursor:pointer" onclick="renderRegionDetail('${region}')">`;
-    html += `<td>${REGION_FLAGS[region] || ''} <strong>${region}</strong></td>`;
-    html += `<td class="contrib-col">${v22 ? fmt(v22) : '—'}</td>`;
-    html += `<td class="contrib-col">${v24 ? fmt(v24) : '—'}</td>`;
-    html += `<td class="contrib-col">${v25 ? fmt(v25) : '—'}</td>`;
-    html += `<td class="contrib-col">${fmt(cum)}</td>`;
-    html += `<td class="contrib-col">${pct25}%</td>`;
-    html += '</tr>';
+  const cumByCountry = src.cumulative;
+  const cumTotal = Object.values(cumByCountry).reduce((s, v) => s + v, 0);
+  const allCountries = new Set();
+  for (const yearData of Object.values(yearCountryData)) {
+    for (const c of Object.keys(yearData)) allCountries.add(c);
   }
-  html += '</tbody></table>';
-  html += `<div style="margin-top:12px;color:var(--text2);font-size:0.8rem">Click a region to see country breakdown · 2025 data is partial year · Source: devstats.cncf.io</div>`;
-
-  document.getElementById('countries-stats').innerHTML = `
-    <div class="stat"><strong>${countriesData.allCountries.size}</strong> countries (all-time)</div>
-    <div class="stat"><strong>${fmt(total2025)}</strong> contributors (2025)</div>
-    <div class="stat"><strong>${fmt(cumTotal)}</strong> cumulative</div>
-  `;
-  document.getElementById('countries-table').innerHTML = html;
-  document.getElementById('countries-table').style.display = '';
-  document.getElementById('countries-grouped').style.display = 'none';
-}
-
-function renderRegionDetail(region) {
-  if (!countriesData) return;
-  const { cumByCountry, cumByRegion, yearCountryData } = countriesData;
-  const countries = cumByRegion[region] || {};
-  const y2025 = yearCountryData[2025] || {};
-
-  // Sort by cumulative
-  const sorted = Object.entries(countries).sort((a,b) => b[1] - a[1]);
-
-  let html = `<table><thead><tr><th>#</th><th>Country</th><th class="contrib-col">2025</th><th class="contrib-col">All-time</th></tr></thead><tbody>`;
-  sorted.forEach(([country, cum], i) => {
-    const y25 = y2025[country] || 0;
-    html += `<tr><td class="rank-col">${i+1}</td><td>${esc(country)}</td><td class="contrib-col">${y25 ? fmt(y25) : '—'}</td><td class="contrib-col">${fmt(cum)}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  html += `<div style="margin-top:8px"><button onclick="renderRegionTable()" style="padding:6px 14px;background:var(--accent2);border:none;border-radius:4px;color:#fff;cursor:pointer">← Back to regions</button></div>`;
-
-  document.getElementById('countries-table').innerHTML = html;
-}
-
-function renderTop20Table() {
-  if (!countriesData) return;
-  const { yearCountryData } = countriesData;
-
-  const years = [2019, 2022, 2024, 2025];
-  let html = '<table><thead><tr><th>#</th><th>Country</th>';
-  years.forEach(y => html += `<th class="contrib-col">${y}</th>`);
-  html += '<th class="contrib-col">Share</th></tr></thead><tbody>';
-
-  // Use 2025 for ranking
-  const y2025 = yearCountryData[2025] || {};
-  const total2025 = Object.values(y2025).reduce((s,v) => s + v, 0);
-  const sorted = Object.entries(y2025).sort((a,b) => b[1] - a[1]).slice(0, 20);
-
-  sorted.forEach(([country, v25], i) => {
-    html += `<tr><td class="rank-col">${i+1}</td><td>${esc(country)}</td>`;
-    years.forEach(y => {
-      const v = (yearCountryData[y] || {})[country] || 0;
-      html += `<td class="contrib-col">${v ? fmt(v) : '—'}</td>`;
-    });
-    const pct = total2025 > 0 ? (v25 / total2025 * 100).toFixed(1) : '—';
-    html += `<td class="contrib-col">${pct}%</td></tr>`;
-  });
-
-  html += '</tbody></table>';
-  html += `<div style="margin-top:8px;color:var(--text2);font-size:0.8rem">Top 20 by 2025 contributors · Source: devstats.cncf.io</div>`;
-
-  const total2025val = Object.values(y2025).reduce((s,v) => s + v, 0);
-  document.getElementById('countries-stats').innerHTML = `
-    <div class="stat"><strong>Top 20</strong> countries by contributors (2025)</div>
-    <div class="stat"><strong>${fmt(total2025val)}</strong> total (2025)</div>
-  `;
-  document.getElementById('countries-table').innerHTML = html;
-  document.getElementById('countries-table').style.display = '';
-  document.getElementById('countries-grouped').style.display = 'none';
-}
-
-function renderTrendTable() {
-  if (!countriesData) return;
-  const { yearCountryData, years } = countriesData;
-
-  const allYears = Object.keys(yearCountryData).map(Number).sort();
-  const recentYears = allYears.slice(-6);
-
-  // Calculate region totals per year
-  function regionForYear(yearData) {
-    const r = {};
-    for (const [c, v] of Object.entries(yearData)) {
-      const reg = COUNTRY_REGIONS[c] || 'Other';
-      r[reg] = (r[reg] || 0) + v;
-    }
-    return r;
+  const years = Object.keys(yearCountryData).map(Number).sort();
+  const cumByRegion = {};
+  REGION_ORDER.forEach(r => cumByRegion[r] = {});
+  for (const [country, val] of Object.entries(cumByCountry)) {
+    const region = COUNTRY_REGIONS[country] || 'Other';
+    if (!cumByRegion[region]) cumByRegion[region] = {};
+    cumByRegion[region][country] = val;
   }
+  countriesData = { yearCountryData, cumByCountry, cumTotal, cumByRegion, allCountries, years };
 
-  let html = '<table><thead><tr><th>Region</th>';
-  recentYears.forEach(y => html += `<th class="contrib-col">${y}</th>`);
-  html += '</tr></thead><tbody>';
-
-  for (const region of REGION_ORDER) {
-    html += `<tr><td>${REGION_FLAGS[region] || ''} <strong>${region}</strong></td>`;
-    recentYears.forEach(y => {
-      const rTotals = regionForYear(yearCountryData[y] || {});
-      const v = rTotals[region] || 0;
-      html += `<td class="contrib-col">${v ? fmt(v) : '—'}</td>`;
-    });
-    html += '</tr>';
-  }
-
-  // Total row
-  html += '<tr style="border-top:2px solid var(--border);font-weight:bold"><td>Total</td>';
-  recentYears.forEach(y => {
-    const total = Object.values(yearCountryData[y] || {}).reduce((s,v) => s + v, 0);
-    html += `<td class="contrib-col">${total ? fmt(total) : '—'}</td>`;
-  });
-  html += '</tr>';
-
-  // Countries row
-  html += '<tr><td>Countries</td>';
-  recentYears.forEach(y => {
-    const count = Object.keys(yearCountryData[y] || {}).length;
-    html += `<td class="contrib-col">${count || '—'}</td>`;
-  });
-  html += '</tr>';
-
-  html += '</tbody></table>';
-  html += `<div style="margin-top:8px;color:var(--text2);font-size:0.8rem">Yearly active contributors by region · Source: devstats.cncf.io</div>`;
-
-  const latestYear = Math.max(...allYears);
-  const latestTotal = Object.values(yearCountryData[latestYear] || {}).reduce((s,v) => s + v, 0);
-  document.getElementById('countries-stats').innerHTML = `
-    <div class="stat"><strong>${latestYear}</strong> (YTD)</div>
-    <div class="stat"><strong>${fmt(latestTotal)}</strong> contributors</div>
-    <div class="stat"><strong>${Object.keys(yearCountryData[latestYear] || {}).length}</strong> countries</div>
-  `;
-  document.getElementById('countries-table').innerHTML = html;
-  document.getElementById('countries-table').style.display = '';
-  document.getElementById('countries-grouped').style.display = 'none';
+  if (view === 'region') renderRegionTable();
+  else if (view === 'top20') renderTop20Table();
+  else if (view === 'trend') renderTrendTable();
 }
 
 document.getElementById('search').addEventListener('keydown', e => {
