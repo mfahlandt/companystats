@@ -1023,7 +1023,6 @@ function renderCountriesView() {
   if (!countriesData) loadCountries();
   if (!countriesData) return;
   const view = document.getElementById('ct-view').value;
-  // Re-load data if metric changed
   const metric = document.getElementById('ct-metric').value;
   const metricKey = metric === 'commits' ? 'commits' : 'contributors';
   const src = COUNTRIES_DATA[metricKey];
@@ -1050,6 +1049,177 @@ function renderCountriesView() {
   if (view === 'region') renderRegionTable();
   else if (view === 'top20') renderTop20Table();
   else if (view === 'trend') renderTrendTable();
+}
+
+function fmt(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return n.toString();
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderRegionTable() {
+  if (!countriesData) return;
+  const { cumByCountry, cumTotal, cumByRegion, yearCountryData } = countriesData;
+  const y2024 = yearCountryData[2024] || {};
+  const y2025 = yearCountryData[2025] || {};
+  const total2024 = Object.values(y2024).reduce((s, v) => s + v, 0);
+  const total2025 = Object.values(y2025).reduce((s, v) => s + v, 0);
+
+  function regionTotals(yearData) {
+    const r = {};
+    for (const [c, v] of Object.entries(yearData)) {
+      const reg = COUNTRY_REGIONS[c] || 'Other';
+      r[reg] = (r[reg] || 0) + v;
+    }
+    return r;
+  }
+  const r2022 = regionTotals(yearCountryData[2022] || {});
+  const r2024 = regionTotals(y2024);
+  const r2025 = regionTotals(y2025);
+
+  let html = '<table><thead><tr><th>Region</th><th class="contrib-col">2022</th><th class="contrib-col">2024</th><th class="contrib-col">2025</th><th class="contrib-col">All-time</th><th class="contrib-col">Share 2025</th></tr></thead><tbody>';
+
+  for (const region of REGION_ORDER) {
+    const v22 = r2022[region] || 0;
+    const v24 = r2024[region] || 0;
+    const v25 = r2025[region] || 0;
+    const cum = Object.values(cumByRegion[region] || {}).reduce((s, v) => s + v, 0);
+    const pct25 = total2025 > 0 ? (v25 / total2025 * 100).toFixed(1) : '—';
+    html += `<tr style="cursor:pointer" onclick="renderRegionDetail('${region}')">`;
+    html += `<td>${REGION_FLAGS[region] || ''} <strong>${region}</strong></td>`;
+    html += `<td class="contrib-col">${v22 ? fmt(v22) : '—'}</td>`;
+    html += `<td class="contrib-col">${v24 ? fmt(v24) : '—'}</td>`;
+    html += `<td class="contrib-col">${v25 ? fmt(v25) : '—'}</td>`;
+    html += `<td class="contrib-col">${fmt(cum)}</td>`;
+    html += `<td class="contrib-col">${pct25}%</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  html += '<div style="margin-top:12px;color:var(--text2);font-size:0.8rem">Click a region to see country breakdown · 2025 data is partial year · Source: devstats.cncf.io</div>';
+
+  document.getElementById('countries-stats').innerHTML = `
+    <div class="stat"><strong>${countriesData.allCountries.size}</strong> countries (all-time)</div>
+    <div class="stat"><strong>${fmt(total2025)}</strong> contributors (2025)</div>
+    <div class="stat"><strong>${fmt(cumTotal)}</strong> cumulative</div>
+  `;
+  document.getElementById('countries-table').innerHTML = html;
+  document.getElementById('countries-table').style.display = '';
+  document.getElementById('countries-grouped').style.display = 'none';
+}
+
+function renderRegionDetail(region) {
+  if (!countriesData) return;
+  const { cumByCountry, cumByRegion, yearCountryData } = countriesData;
+  const countries = cumByRegion[region] || {};
+  const y2025 = yearCountryData[2025] || {};
+  const sorted = Object.entries(countries).sort((a, b) => b[1] - a[1]);
+
+  let html = '<table><thead><tr><th>#</th><th>Country</th><th class="contrib-col">2025</th><th class="contrib-col">All-time</th></tr></thead><tbody>';
+  sorted.forEach(([country, cum], i) => {
+    const y25 = y2025[country] || 0;
+    html += `<tr><td class="rank-col">${i + 1}</td><td>${esc(country)}</td><td class="contrib-col">${y25 ? fmt(y25) : '—'}</td><td class="contrib-col">${fmt(cum)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += '<div style="margin-top:8px"><button onclick="renderRegionTable()" style="padding:6px 14px;background:var(--accent2);border:none;border-radius:4px;color:#fff;cursor:pointer">← Back to regions</button></div>';
+
+  document.getElementById('countries-table').innerHTML = html;
+}
+
+function renderTop20Table() {
+  if (!countriesData) return;
+  const { yearCountryData } = countriesData;
+  const years = [2019, 2022, 2024, 2025];
+  const y2025 = yearCountryData[2025] || {};
+  const total2025 = Object.values(y2025).reduce((s, v) => s + v, 0);
+  const sorted = Object.entries(y2025).sort((a, b) => b[1] - a[1]).slice(0, 20);
+
+  let html = '<table><thead><tr><th>#</th><th>Country</th>';
+  years.forEach(y => html += `<th class="contrib-col">${y}</th>`);
+  html += '<th class="contrib-col">Share</th></tr></thead><tbody>';
+
+  sorted.forEach(([country, v25], i) => {
+    html += `<tr><td class="rank-col">${i + 1}</td><td>${esc(country)}</td>`;
+    years.forEach(y => {
+      const v = (yearCountryData[y] || {})[country] || 0;
+      html += `<td class="contrib-col">${v ? fmt(v) : '—'}</td>`;
+    });
+    const pct = total2025 > 0 ? (v25 / total2025 * 100).toFixed(1) : '—';
+    html += `<td class="contrib-col">${pct}%</td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += '<div style="margin-top:8px;color:var(--text2);font-size:0.8rem">Top 20 by 2025 contributors · Source: devstats.cncf.io</div>';
+
+  document.getElementById('countries-stats').innerHTML = `
+    <div class="stat"><strong>Top 20</strong> countries by contributors (2025)</div>
+    <div class="stat"><strong>${fmt(total2025)}</strong> total (2025)</div>
+  `;
+  document.getElementById('countries-table').innerHTML = html;
+  document.getElementById('countries-table').style.display = '';
+  document.getElementById('countries-grouped').style.display = 'none';
+}
+
+function renderTrendTable() {
+  if (!countriesData) return;
+  const { yearCountryData, years } = countriesData;
+  const allYears = Object.keys(yearCountryData).map(Number).sort();
+  const recentYears = allYears.slice(-6);
+
+  function regionForYear(yearData) {
+    const r = {};
+    for (const [c, v] of Object.entries(yearData)) {
+      const reg = COUNTRY_REGIONS[c] || 'Other';
+      r[reg] = (r[reg] || 0) + v;
+    }
+    return r;
+  }
+
+  let html = '<table><thead><tr><th>Region</th>';
+  recentYears.forEach(y => html += `<th class="contrib-col">${y}</th>`);
+  html += '</tr></thead><tbody>';
+
+  for (const region of REGION_ORDER) {
+    html += `<tr><td>${REGION_FLAGS[region] || ''} <strong>${region}</strong></td>`;
+    recentYears.forEach(y => {
+      const rTotals = regionForYear(yearCountryData[y] || {});
+      const v = rTotals[region] || 0;
+      html += `<td class="contrib-col">${v ? fmt(v) : '—'}</td>`;
+    });
+    html += '</tr>';
+  }
+
+  // Total row
+  html += '<tr style="border-top:2px solid var(--border);font-weight:bold"><td>Total</td>';
+  recentYears.forEach(y => {
+    const total = Object.values(yearCountryData[y] || {}).reduce((s, v) => s + v, 0);
+    html += `<td class="contrib-col">${total ? fmt(total) : '—'}</td>`;
+  });
+  html += '</tr>';
+
+  // Countries count row
+  html += '<tr><td>Countries</td>';
+  recentYears.forEach(y => {
+    const count = Object.keys(yearCountryData[y] || {}).length;
+    html += `<td class="contrib-col">${count || '—'}</td>`;
+  });
+  html += '</tr></tbody></table>';
+  html += '<div style="margin-top:8px;color:var(--text2);font-size:0.8rem">Yearly active contributors by region · Source: devstats.cncf.io</div>';
+
+  const latestYear = Math.max(...allYears);
+  const latestTotal = Object.values(yearCountryData[latestYear] || {}).reduce((s, v) => s + v, 0);
+  document.getElementById('countries-stats').innerHTML = `
+    <div class="stat"><strong>${latestYear}</strong> (YTD)</div>
+    <div class="stat"><strong>${fmt(latestTotal)}</strong> contributors</div>
+    <div class="stat"><strong>${Object.keys(yearCountryData[latestYear] || {}).length}</strong> countries</div>
+  `;
+  document.getElementById('countries-table').innerHTML = html;
+  document.getElementById('countries-table').style.display = '';
+  document.getElementById('countries-grouped').style.display = 'none';
 }
 
 document.getElementById('search').addEventListener('keydown', e => {
