@@ -8,7 +8,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-HTML_FILE="$SCRIPT_DIR/devstats-search.html"
+HTML_FILE="$SCRIPT_DIR/index.html"
 GRAFANA_API="https://all.devstats.cncf.io/api/ds/query"
 
 echo "🔄 Fetching country data from DevStats..."
