@@ -375,6 +375,7 @@ tr.highlight td { background: #1a2e1a; }
   <div class="tabs">
     <button class="tab active" onclick="switchTab('search')" id="tab-search">🔍 Search</button>
     <button class="tab" onclick="switchTab('region')" id="tab-region">🌍 Region Top</button>
+    <button class="tab" onclick="switchTab('countries')" id="tab-countries">🗺️ By Country</button>
   </div>
 
   <div id="panel-search">
@@ -441,6 +442,26 @@ tr.highlight td { background: #1a2e1a; }
     <div id="region-loading" class="loading" style="display:none"><div class="spinner"></div><br>Loading region data...</div>
     <div id="region-table"></div>
     <div id="region-grouped" style="display:none"></div>
+  </div>
+
+  <div id="panel-countries" style="display:none">
+    <p class="disclaimer-banner" style="margin-bottom:12px">🗺️ Contributors by country (not company HQ) — from DevStats country analysis · Data is yearly active contributors per country</p>
+    <div class="region-controls">
+      <select id="ct-view">
+        <option value="region">🌍 By Region</option>
+        <option value="top20">📊 Top 20 Countries</option>
+        <option value="trend">📈 Year-over-Year Trend</option>
+      </select>
+      <select id="ct-metric">
+        <option value="contributors">Contributors</option>
+        <option value="commits">Commits</option>
+      </select>
+      <button onclick="loadCountries()">Load</button>
+    </div>
+    <div id="countries-stats" class="stats"></div>
+    <div id="countries-loading" class="loading" style="display:none"><div class="spinner"></div><br>Loading country data from DevStats...</div>
+    <div id="countries-table" class="table-wrapper"></div>
+    <div id="countries-grouped" style="display:none"></div>
   </div>
 </div>
 
@@ -731,9 +752,12 @@ function showDetail(companyName) {
 function switchTab(tab) {
   document.getElementById('tab-search').classList.toggle('active', tab === 'search');
   document.getElementById('tab-region').classList.toggle('active', tab === 'region');
+  document.getElementById('tab-countries').classList.toggle('active', tab === 'countries');
   document.getElementById('panel-search').style.display = tab === 'search' ? '' : 'none';
   document.getElementById('panel-region').style.display = tab === 'region' ? '' : 'none';
+  document.getElementById('panel-countries').style.display = tab === 'countries' ? '' : 'none';
   if (tab === 'region' && !regionData) loadRegion();
+  if (tab === 'countries' && !countriesData) loadCountries();
 }
 
 let regionData = null;
@@ -940,6 +964,298 @@ loadProjects = async function() {
   await origLoadProjects();
   populateRegionProjects();
 };
+
+// === COUNTRIES TAB ===
+const GRAFANA_API = 'https://all.devstats.cncf.io/api/ds/query';
+let countriesData = null;
+
+// ISO country name -> region mapping (same as used in the SQL analysis)
+const COUNTRY_REGIONS = {
+  'Germany':'Europe','United Kingdom':'Europe','France':'Europe','Netherlands':'Europe','Spain':'Europe','Poland':'Europe','Sweden':'Europe','Switzerland':'Europe','Czech Republic':'Europe','Italy':'Europe','Russian Federation':'Europe','Finland':'Europe','Austria':'Europe','Ukraine':'Europe','Norway':'Europe','Denmark':'Europe','Belgium':'Europe','Portugal':'Europe','Turkey':'Europe','Ireland':'Europe','Romania':'Europe','Greece':'Europe','Hungary':'Europe','Bulgaria':'Europe','Croatia':'Europe','Slovakia':'Europe','Slovenia':'Europe','Lithuania':'Europe','Latvia':'Europe','Estonia':'Europe','Iceland':'Europe','Serbia':'Europe','Malta':'Europe','Luxembourg':'Europe','Cyprus':'Europe','Belarus':'Europe','Moldova Republic of':'Europe','Albania':'Europe','Bosnia and Herzegovina':'Europe','Montenegro':'Europe','Andorra':'Europe','Liechtenstein':'Europe','Faroe Islands':'Europe','Gibraltar':'Europe','Isle of Man':'Europe','Guernsey':'Europe','San Marino':'Europe','Serbia and Montenegro':'Europe','Macedonia the Former Yugoslav Republic of':'Europe',
+  'China':'Asia','India':'Asia','Japan':'Asia','Korea Republic of':'Asia','Singapore':'Asia','Israel':'Asia','Taiwan Province of China':'Asia','Hong Kong':'Asia','Indonesia':'Asia','Viet Nam':'Asia','Thailand':'Asia','Malaysia':'Asia','Philippines':'Asia','Pakistan':'Asia','Bangladesh':'Asia','Sri Lanka':'Asia','Iran Islamic Republic of':'Asia','Saudi Arabia':'Asia','United Arab Emirates':'Asia','Kazakhstan':'Asia','Uzbekistan':'Asia','Iraq':'Asia','Jordan':'Asia','Lebanon':'Asia','Syrian Arab Republic':'Asia','Nepal':'Asia','Myanmar':'Asia','Cambodia':'Asia','Mongolia':'Asia','Oman':'Asia','Kuwait':'Asia','Bahrain':'Asia','Qatar':'Asia','Azerbaijan':'Asia','Georgia':'Asia','Armenia':'Asia','Kyrgyzstan':'Asia','Tajikistan':'Asia','Turkmenistan':'Asia','Afghanistan':'Asia','Korea Democratic People Republic of':'Asia','Lao People Democratic Republic':'Asia','Maldives':'Asia','Macao':'Asia','Timor-Leste':'Asia','Brunei Darussalam':'Asia',
+  'United States':'North America','Canada':'North America','Mexico':'North America','Puerto Rico':'North America','Costa Rica':'North America','Nicaragua':'North America','Guatemala':'North America','Dominican Republic':'North America','Jamaica':'North America','Panama':'North America','El Salvador':'North America','Honduras':'North America','Trinidad and Tobago':'North America','Bermuda':'North America','Cayman Islands':'North America','Aruba':'North America','Curaçao':'North America','Virgin Islands U.S.':'North America','Virgin Islands British':'North America','Bahamas':'North America','Barbados':'North America','Saint Lucia':'North America','Saint Vincent and the Grenadines':'North America','Antigua and Barbuda':'North America','Saint Kitts and Nevis':'North America','Belize':'North America',
+  'Brazil':'South America','Argentina':'South America','Chile':'South America','Colombia':'South America','Peru':'South America','Uruguay':'South America','Paraguay':'South America','Ecuador':'South America','Bolivia Plurinational State of':'South America','Venezuela Bolivarian Republic of':'South America','Guyana':'South America','Suriname':'South America',
+  'Australia':'Oceania','New Zealand':'Oceania','French Polynesia':'Oceania','New Caledonia':'Oceania','Fiji':'Oceania','Samoa':'Oceania','Vanuatu':'Oceania','Solomon Islands':'Oceania','Kiribati':'Oceania','Papua New Guinea':'Oceania',
+  'South Africa':'Africa','Nigeria':'Africa','Kenya':'Africa','Egypt':'Africa','Ghana':'Africa','Uganda':'Africa','Tanzania United Republic of':'Africa','Morocco':'Africa','Tunisia':'Africa','Algeria':'Africa','Senegal':'Africa','Cameroon':'Africa','Ethiopia':'Africa','Mauritius':'Africa','Rwanda':'Africa','Zimbabwe':'Africa','Benin':'Africa','Congo the Democratic Republic of':'Africa','Madagascar':'Africa','Mozambique':'Africa','Angola':'Africa','Zambia':'Africa','Malawi':'Africa','Botswana':'Africa','Lesotho':'Africa','Namibia':'Africa','Libya':'Africa','Sudan':'Africa','South Sudan':'Africa','Somalia':'Africa','Eritrea':'Africa','Mali':'Africa','Burkina Faso':'Africa','Niger':'Africa','Chad':'Africa','Guinea':'Africa','Guinea-Bissau':'Africa','Sierra Leone':'Africa','Liberia':'Africa','Togo':'Africa','Gambia':'Africa','Mauritania':'Africa','Cape Verde':'Africa','Comoros':'Africa','Djibouti':'Africa','Swaziland':'Africa','Gabon':'Africa','Congo':'Africa','Central African Republic':'Africa','Equatorial Guinea':'Africa',
+};
+
+const REGION_ORDER = ['Europe','North America','Asia','Oceania','South America','Africa','Other'];
+const REGION_FLAGS = {'Europe':'🇪🇺','North America':'🌎','Asia':'🌏','Oceania':'🌏','South America':'🌎','Africa':'🌍','Other':'🏳️'};
+
+async function grafanaQuery(sql) {
+  const resp = await fetch(GRAFANA_API, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({queries: [{refId: 'A', datasourceId: 1, format: 'table', rawSql: sql}]})
+  });
+  return resp.json();
+}
+
+async function loadCountries() {
+  const view = document.getElementById('ct-view').value;
+  const metric = document.getElementById('ct-metric').value;
+  const metricSuffix = metric === 'commits' ? 'commits' : 'contributors';
+  const seriesName = `countriesall${metricSuffix}`;
+  const seriesCumName = `countriescumall${metricSuffix}`;
+
+  const loading = document.getElementById('countries-loading');
+  const stats = document.getElementById('countries-stats');
+  const table = document.getElementById('countries-table');
+  const grouped = document.getElementById('countries-grouped');
+  loading.style.display = '';
+  stats.innerHTML = '';
+  table.innerHTML = '';
+  grouped.innerHTML = '';
+
+  try {
+    // Fetch yearly data
+    const yearlyData = await grafanaQuery(
+      `SELECT * FROM scountries WHERE series = '${seriesName}' AND period = 'y' ORDER BY time`
+    );
+
+    const frames = yearlyData.results.A.frames;
+    if (!frames || !frames.length) throw new Error('No data returned');
+
+    const schema = frames[0].schema.fields;
+    const values = frames[0].data.values;
+
+    // Parse: each row is a time slice, countries are columns
+    const timeVals = values[0]; // timestamps
+    const years = [...new Set(timeVals.map(t => new Date(t).getUTCFullYear()))];
+
+    // Build year -> country -> value
+    const yearCountryData = {};
+    const allCountries = new Set();
+    for (let i = 3; i < schema.length; i++) {
+      const name = schema[i].name;
+      allCountries.add(name);
+      for (let j = 0; j < values[i].length; j++) {
+        const v = values[i][j];
+        const year = new Date(timeVals[j]).getUTCFullYear();
+        if (!yearCountryData[year]) yearCountryData[year] = {};
+        if (v !== null && v > 0) yearCountryData[year][name] = v;
+      }
+    }
+
+    // Also fetch cumulative data
+    const cumData = await grafanaQuery(
+      `SELECT * FROM scountriescum WHERE series = '${seriesCumName}' AND period = 'm' ORDER BY time DESC LIMIT 1`
+    );
+    const cumFrames = cumData.results.A.frames;
+    let cumTotal = 0;
+    const cumByCountry = {};
+    const cumByRegion = {};
+    if (cumFrames && cumFrames.length) {
+      const cumSchema = cumFrames[0].schema.fields;
+      const cumValues = cumFrames[0].data.values;
+      for (let i = 3; i < cumSchema.length; i++) {
+        const name = cumSchema[i].name;
+        for (let j = 0; j < cumValues[i].length; j++) {
+          const v = cumValues[i][j];
+          if (v !== null && v > 0) {
+            cumByCountry[name] = (cumByCountry[name] || 0) + v;
+            cumTotal += v;
+          }
+        }
+      }
+    }
+
+    // Group by region
+    const regionData = {};
+    REGION_ORDER.forEach(r => regionData[r] = {});
+    for (const [country, val] of Object.entries(cumByCountry)) {
+      const region = COUNTRY_REGIONS[country] || 'Other';
+      if (!regionData[region]) regionData[region] = {};
+      regionData[region][country] = val;
+    }
+
+    countriesData = { yearCountryData, cumByCountry, cumTotal, cumByRegion: regionData, allCountries, years };
+    loading.style.display = 'none';
+
+    // Render based on view
+    if (view === 'region') renderRegionTable();
+    else if (view === 'top20') renderTop20Table();
+    else if (view === 'trend') renderTrendTable();
+
+  } catch(e) {
+    loading.style.display = 'none';
+    table.innerHTML = `<div class="error">Error loading country data: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderRegionTable() {
+  if (!countriesData) return;
+  const { cumByCountry, cumTotal, cumByRegion, yearCountryData } = countriesData;
+
+  const latestYear = Math.max(...Object.keys(yearCountryData).map(Number));
+  const y2024 = yearCountryData[2024] || {};
+  const y2025 = yearCountryData[2025] || {};
+  const total2024 = Object.values(y2024).reduce((s,v) => s + v, 0);
+  const total2025 = Object.values(y2025).reduce((s,v) => s + v, 0);
+
+  // Compute region totals for key years
+  function regionTotal(yearData) {
+    const r = {};
+    for (const [c, v] of Object.entries(yearData)) {
+      const reg = COUNTRY_REGIONS[c] || 'Other';
+      r[reg] = (r[reg] || 0) + v;
+    }
+    return r;
+  }
+  const r2022 = regionTotal(yearCountryData[2022] || {});
+  const r2024 = regionTotal(y2024);
+  const r2025 = regionTotal(y2025);
+
+  const total2022 = Object.values(yearCountryData[2022] || {}).reduce((s,v) => s + v, 0);
+
+  let html = '<table><thead><tr><th>Region</th><th class="contrib-col">2022</th><th class="contrib-col">2024</th><th class="contrib-col">2025</th><th class="contrib-col">All-time</th><th class="contrib-col">Share 2025</th></tr></thead><tbody>';
+
+  for (const region of REGION_ORDER) {
+    const v22 = r2022[region] || 0;
+    const v24 = r2024[region] || 0;
+    const v25 = r2025[region] || 0;
+    const cum = Object.values(cumByRegion[region] || {}).reduce((s,v) => s + v, 0);
+    const pct25 = total2025 > 0 ? (v25 / total2025 * 100).toFixed(1) : '—';
+    html += `<tr style="cursor:pointer" onclick="renderRegionDetail('${region}')">`;
+    html += `<td>${REGION_FLAGS[region] || ''} <strong>${region}</strong></td>`;
+    html += `<td class="contrib-col">${v22 ? fmt(v22) : '—'}</td>`;
+    html += `<td class="contrib-col">${v24 ? fmt(v24) : '—'}</td>`;
+    html += `<td class="contrib-col">${v25 ? fmt(v25) : '—'}</td>`;
+    html += `<td class="contrib-col">${fmt(cum)}</td>`;
+    html += `<td class="contrib-col">${pct25}%</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  html += `<div style="margin-top:12px;color:var(--text2);font-size:0.8rem">Click a region to see country breakdown · 2025 data is partial year · Source: devstats.cncf.io</div>`;
+
+  document.getElementById('countries-stats').innerHTML = `
+    <div class="stat"><strong>${countriesData.allCountries.size}</strong> countries (all-time)</div>
+    <div class="stat"><strong>${fmt(total2025)}</strong> contributors (2025)</div>
+    <div class="stat"><strong>${fmt(cumTotal)}</strong> cumulative</div>
+  `;
+  document.getElementById('countries-table').innerHTML = html;
+  document.getElementById('countries-table').style.display = '';
+  document.getElementById('countries-grouped').style.display = 'none';
+}
+
+function renderRegionDetail(region) {
+  if (!countriesData) return;
+  const { cumByCountry, cumByRegion, yearCountryData } = countriesData;
+  const countries = cumByRegion[region] || {};
+  const y2025 = yearCountryData[2025] || {};
+
+  // Sort by cumulative
+  const sorted = Object.entries(countries).sort((a,b) => b[1] - a[1]);
+
+  let html = `<table><thead><tr><th>#</th><th>Country</th><th class="contrib-col">2025</th><th class="contrib-col">All-time</th></tr></thead><tbody>`;
+  sorted.forEach(([country, cum], i) => {
+    const y25 = y2025[country] || 0;
+    html += `<tr><td class="rank-col">${i+1}</td><td>${esc(country)}</td><td class="contrib-col">${y25 ? fmt(y25) : '—'}</td><td class="contrib-col">${fmt(cum)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  html += `<div style="margin-top:8px"><button onclick="renderRegionTable()" style="padding:6px 14px;background:var(--accent2);border:none;border-radius:4px;color:#fff;cursor:pointer">← Back to regions</button></div>`;
+
+  document.getElementById('countries-table').innerHTML = html;
+}
+
+function renderTop20Table() {
+  if (!countriesData) return;
+  const { yearCountryData } = countriesData;
+
+  const years = [2019, 2022, 2024, 2025];
+  let html = '<table><thead><tr><th>#</th><th>Country</th>';
+  years.forEach(y => html += `<th class="contrib-col">${y}</th>`);
+  html += '<th class="contrib-col">Share</th></tr></thead><tbody>';
+
+  // Use 2025 for ranking
+  const y2025 = yearCountryData[2025] || {};
+  const total2025 = Object.values(y2025).reduce((s,v) => s + v, 0);
+  const sorted = Object.entries(y2025).sort((a,b) => b[1] - a[1]).slice(0, 20);
+
+  sorted.forEach(([country, v25], i) => {
+    html += `<tr><td class="rank-col">${i+1}</td><td>${esc(country)}</td>`;
+    years.forEach(y => {
+      const v = (yearCountryData[y] || {})[country] || 0;
+      html += `<td class="contrib-col">${v ? fmt(v) : '—'}</td>`;
+    });
+    const pct = total2025 > 0 ? (v25 / total2025 * 100).toFixed(1) : '—';
+    html += `<td class="contrib-col">${pct}%</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  html += `<div style="margin-top:8px;color:var(--text2);font-size:0.8rem">Top 20 by 2025 contributors · Source: devstats.cncf.io</div>`;
+
+  const total2025val = Object.values(y2025).reduce((s,v) => s + v, 0);
+  document.getElementById('countries-stats').innerHTML = `
+    <div class="stat"><strong>Top 20</strong> countries by contributors (2025)</div>
+    <div class="stat"><strong>${fmt(total2025val)}</strong> total (2025)</div>
+  `;
+  document.getElementById('countries-table').innerHTML = html;
+  document.getElementById('countries-table').style.display = '';
+  document.getElementById('countries-grouped').style.display = 'none';
+}
+
+function renderTrendTable() {
+  if (!countriesData) return;
+  const { yearCountryData, years } = countriesData;
+
+  const allYears = Object.keys(yearCountryData).map(Number).sort();
+  const recentYears = allYears.slice(-6);
+
+  // Calculate region totals per year
+  function regionForYear(yearData) {
+    const r = {};
+    for (const [c, v] of Object.entries(yearData)) {
+      const reg = COUNTRY_REGIONS[c] || 'Other';
+      r[reg] = (r[reg] || 0) + v;
+    }
+    return r;
+  }
+
+  let html = '<table><thead><tr><th>Region</th>';
+  recentYears.forEach(y => html += `<th class="contrib-col">${y}</th>`);
+  html += '</tr></thead><tbody>';
+
+  for (const region of REGION_ORDER) {
+    html += `<tr><td>${REGION_FLAGS[region] || ''} <strong>${region}</strong></td>`;
+    recentYears.forEach(y => {
+      const rTotals = regionForYear(yearCountryData[y] || {});
+      const v = rTotals[region] || 0;
+      html += `<td class="contrib-col">${v ? fmt(v) : '—'}</td>`;
+    });
+    html += '</tr>';
+  }
+
+  // Total row
+  html += '<tr style="border-top:2px solid var(--border);font-weight:bold"><td>Total</td>';
+  recentYears.forEach(y => {
+    const total = Object.values(yearCountryData[y] || {}).reduce((s,v) => s + v, 0);
+    html += `<td class="contrib-col">${total ? fmt(total) : '—'}</td>`;
+  });
+  html += '</tr>';
+
+  // Countries row
+  html += '<tr><td>Countries</td>';
+  recentYears.forEach(y => {
+    const count = Object.keys(yearCountryData[y] || {}).length;
+    html += `<td class="contrib-col">${count || '—'}</td>`;
+  });
+  html += '</tr>';
+
+  html += '</tbody></table>';
+  html += `<div style="margin-top:8px;color:var(--text2);font-size:0.8rem">Yearly active contributors by region · Source: devstats.cncf.io</div>`;
+
+  const latestYear = Math.max(...allYears);
+  const latestTotal = Object.values(yearCountryData[latestYear] || {}).reduce((s,v) => s + v, 0);
+  document.getElementById('countries-stats').innerHTML = `
+    <div class="stat"><strong>${latestYear}</strong> (YTD)</div>
+    <div class="stat"><strong>${fmt(latestTotal)}</strong> contributors</div>
+    <div class="stat"><strong>${Object.keys(yearCountryData[latestYear] || {}).length}</strong> countries</div>
+  `;
+  document.getElementById('countries-table').innerHTML = html;
+  document.getElementById('countries-table').style.display = '';
+  document.getElementById('countries-grouped').style.display = 'none';
+}
 
 document.getElementById('search').addEventListener('keydown', e => {
   if (e.key === 'Enter') doSearch();
